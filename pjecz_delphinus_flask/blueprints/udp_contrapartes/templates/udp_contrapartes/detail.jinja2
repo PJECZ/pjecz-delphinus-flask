@@ -19,6 +19,19 @@
 {% endblock %}
 
 {% block content %}
+    {% if posibles_personas and current_user.can_view('UDP PERSONAS') %}
+        {% call detail.card('Advertencia: posible persona', border_class='text-bg-warning') %}
+            <ul class="mb-0">
+                {% for persona in posibles_personas %}
+                    <li>
+                        <a href="{{ url_for('udp_personas.detail', udp_persona_id=persona.id) }}">{{ persona.nombre_completo }}</a>
+                        {% if persona.curp %} — CURP: {{ persona.curp }}{% endif %}
+                        {% if persona.nacimiento_fecha %} — F. Nacimiento: {{ persona.nacimiento_fecha }}{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endcall %}
+    {% endif %}
     {% call detail.card(estatus=udp_contraparte.estatus) %}
         {{ detail.label_value('Nombre Completo', udp_contraparte.nombre_completo) }}
         {{ detail.label_value('CURP', udp_contraparte.curp) }}
