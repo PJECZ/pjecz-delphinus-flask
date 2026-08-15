@@ -119,7 +119,9 @@ def detail(udp_contraparte_id):
         .order_by(UdpPersona.apellido_primero, UdpPersona.apellido_segundo, UdpPersona.nombres)
         .all()
     )
-    return render_template("udp_contrapartes/detail.jinja2", udp_contraparte=udp_contraparte, posibles_personas=posibles_personas)
+    return render_template(
+        "udp_contrapartes/detail.jinja2", udp_contraparte=udp_contraparte, posibles_personas=posibles_personas
+    )
 
 
 @udp_contrapartes.route("/udp_contrapartes/nuevo", methods=["GET", "POST"])

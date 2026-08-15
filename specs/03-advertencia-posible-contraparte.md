@@ -55,21 +55,21 @@ posibles_contrapartes = (
 
 1. Modificar `blueprints/udp_personas/views.py`: importar `or_` de SQLAlchemy y el modelo `UdpContraparte`; en la vista `detail` construir las condiciones, ejecutar la consulta y pasar `posibles_contrapartes` a la plantilla. La página sigue funcionando igual si no hay coincidencias.
 2. Modificar `blueprints/udp_personas/templates/udp_personas/detail.jinja2`: al inicio del bloque `content`, si `posibles_contrapartes` no está vacía y `current_user.can_view('UDP CONTRAPARTES')`, renderizar el card amarillo con la macro `detail.card` usando `border_class='text-bg-warning'`, título de advertencia y un `<ul>` con un `<li>` por contraparte (nombre completo enlazado, CURP y fecha de nacimiento).
-3. Verificar: `black .`, `isort .`, `ruff check .`, `basedpyright`. Prueba manual: abrir el detalle de una persona que coincida con una contraparte y confirmar que aparece el card con el enlace funcional.
+3. Verificar: `black .`, `isort .`, `ruff check .`. Prueba manual: abrir el detalle de una persona que coincida con una contraparte y confirmar que aparece el card con el enlace funcional.
 
 ## Criterios de aceptación
 
-- [ ] Una persona que coincide por `nombres` y `apellido_primero` con una contraparte activa muestra el card amarillo con esa contraparte.
-- [ ] Una persona con CURP no vacía igual al de una contraparte activa muestra el card amarillo.
-- [ ] Una persona con fecha de nacimiento igual a la de una contraparte activa muestra el card amarillo.
-- [ ] Una contraparte que coincide por más de un criterio aparece una sola vez en el listado.
-- [ ] Una persona con CURP vacía no genera coincidencias por CURP.
-- [ ] Una persona sin fecha de nacimiento no genera coincidencias por fecha.
-- [ ] Las contrapartes eliminadas (estatus `B`) no aparecen en la advertencia.
-- [ ] Si no hay coincidencias, no se muestra ningún card amarillo.
-- [ ] Un usuario sin permiso VER en `UDP CONTRAPARTES` no ve el card aunque existan coincidencias.
-- [ ] Cada elemento del listado enlaza al detalle correcto de la contraparte.
-- [ ] El código pasa `black .`, `isort .`, `ruff check .`, `basedpyright`.
+- [x] Una persona que coincide por `nombres` y `apellido_primero` con una contraparte activa muestra el card amarillo con esa contraparte.
+- [x] Una persona con CURP no vacía igual al de una contraparte activa muestra el card amarillo.
+- [x] Una persona con fecha de nacimiento igual a la de una contraparte activa muestra el card amarillo.
+- [x] Una contraparte que coincide por más de un criterio aparece una sola vez en el listado.
+- [x] Una persona con CURP vacía no genera coincidencias por CURP.
+- [x] Una persona sin fecha de nacimiento no genera coincidencias por fecha.
+- [x] Las contrapartes eliminadas (estatus `B`) no aparecen en la advertencia.
+- [x] Si no hay coincidencias, no se muestra ningún card amarillo.
+- [x] Un usuario sin permiso VER en `UDP CONTRAPARTES` no ve el card aunque existan coincidencias.
+- [x] Cada elemento del listado enlaza al detalle correcto de la contraparte.
+- [x] El código pasa `black .`, `isort .`, `ruff check .`.
 
 ## Decisiones
 

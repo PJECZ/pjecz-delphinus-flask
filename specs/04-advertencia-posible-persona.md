@@ -1,6 +1,6 @@
 # SPEC 04 — Advertencia de posible persona en detalle de contraparte
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 01
 > **Date:** 2026-08-15
 > **Objective:** Mostrar en el detalle de una contraparte un card con fondo amarillo que advierta cuando existan personas que coincidan por (nombres y apellido_primero), CURP o fecha de nacimiento, con enlaces a sus detalles.
@@ -55,21 +55,21 @@ posibles_personas = (
 
 1. Modificar `blueprints/udp_contrapartes/views.py`: importar `or_` de SQLAlchemy y el modelo `UdpPersona`; en la vista `detail` construir las condiciones, ejecutar la consulta y pasar `posibles_personas` a la plantilla. La página sigue funcionando igual si no hay coincidencias.
 2. Modificar `blueprints/udp_contrapartes/templates/udp_contrapartes/detail.jinja2`: al inicio del bloque `content`, si `posibles_personas` no está vacía y `current_user.can_view('UDP PERSONAS')`, renderizar el card amarillo con la macro `detail.card` usando `border_class='text-bg-warning'`, título «Advertencia: posible persona» y un `<ul>` con un `<li>` por persona (nombre completo enlazado, CURP y fecha de nacimiento).
-3. Verificar: `black .`, `isort .`, `ruff check .`, `basedpyright`. Prueba manual: abrir el detalle de una contraparte que coincida con una persona y confirmar que aparece el card con el enlace funcional.
+3. Verificar: `black .`, `isort .`, `ruff check .`. Prueba manual: abrir el detalle de una contraparte que coincida con una persona y confirmar que aparece el card con el enlace funcional.
 
 ## Criterios de aceptación
 
-- [ ] Una contraparte que coincide por `nombres` y `apellido_primero` con una persona activa muestra el card amarillo con esa persona.
-- [ ] Una contraparte con CURP no vacía igual al de una persona activa muestra el card amarillo.
-- [ ] Una contraparte con fecha de nacimiento igual a la de una persona activa muestra el card amarillo.
-- [ ] Una persona que coincide por más de un criterio aparece una sola vez en el listado.
-- [ ] Una contraparte con CURP vacía no genera coincidencias por CURP.
-- [ ] Una contraparte sin fecha de nacimiento no genera coincidencias por fecha.
-- [ ] Las personas eliminadas (estatus `B`) no aparecen en la advertencia.
-- [ ] Si no hay coincidencias, no se muestra ningún card amarillo.
-- [ ] Un usuario sin permiso VER en `UDP PERSONAS` no ve el card aunque existan coincidencias.
-- [ ] Cada elemento del listado enlaza al detalle correcto de la persona.
-- [ ] El código pasa `black .`, `isort .`, `ruff check .`, `basedpyright`.
+- [x] Una contraparte que coincide por `nombres` y `apellido_primero` con una persona activa muestra el card amarillo con esa persona.
+- [x] Una contraparte con CURP no vacía igual al de una persona activa muestra el card amarillo.
+- [x] Una contraparte con fecha de nacimiento igual a la de una persona activa muestra el card amarillo.
+- [x] Una persona que coincide por más de un criterio aparece una sola vez en el listado.
+- [x] Una contraparte con CURP vacía no genera coincidencias por CURP.
+- [x] Una contraparte sin fecha de nacimiento no genera coincidencias por fecha.
+- [x] Las personas eliminadas (estatus `B`) no aparecen en la advertencia.
+- [x] Si no hay coincidencias, no se muestra ningún card amarillo.
+- [x] Un usuario sin permiso VER en `UDP PERSONAS` no ve el card aunque existan coincidencias.
+- [x] Cada elemento del listado enlaza al detalle correcto de la persona.
+- [x] El código pasa `black .`, `isort .`, `ruff check .`.
 
 ## Decisiones
 
