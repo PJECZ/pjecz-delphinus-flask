@@ -19,6 +19,19 @@
 {% endblock %}
 
 {% block content %}
+    {% if posibles_contrapartes and current_user.can_view('UDP CONTRAPARTES') %}
+        {% call detail.card('Advertencia: posible contraparte', border_class='text-bg-warning') %}
+            <ul class="mb-0">
+                {% for contraparte in posibles_contrapartes %}
+                    <li>
+                        <a href="{{ url_for('udp_contrapartes.detail', udp_contraparte_id=contraparte.id) }}">{{ contraparte.nombre_completo }}</a>
+                        {% if contraparte.curp %} — CURP: {{ contraparte.curp }}{% endif %}
+                        {% if contraparte.nacimiento_fecha %} — F. Nacimiento: {{ contraparte.nacimiento_fecha }}{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endcall %}
+    {% endif %}
     {% call detail.card(estatus=udp_persona.estatus) %}
         <div class="row">
             <div class="col-md-6">

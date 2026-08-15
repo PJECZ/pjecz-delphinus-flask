@@ -1,6 +1,6 @@
 # SPEC 03 — Advertencia de posible contraparte en detalle de persona
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 01
 > **Date:** 2026-08-15
 > **Objective:** Mostrar en el detalle de una persona un card con fondo amarillo que advierta cuando existan contrapartes que coincidan por (nombres y apellido_primero), CURP o fecha de nacimiento, con enlaces a sus detalles.

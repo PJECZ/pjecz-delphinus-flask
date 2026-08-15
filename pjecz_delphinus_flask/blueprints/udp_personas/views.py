@@ -6,10 +6,12 @@ import json
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import or_
 
 from pjecz_delphinus_flask.blueprints.bitacoras.models import Bitacora
 from pjecz_delphinus_flask.blueprints.modulos.models import Modulo
 from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
+from pjecz_delphinus_flask.blueprints.udp_contrapartes.models import UdpContraparte
 from pjecz_delphinus_flask.blueprints.udp_personas.forms import UdpPersonaForm
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
@@ -103,7 +105,21 @@ def list_inactive():
 def detail(udp_persona_id):
     """Detalle de una Persona"""
     udp_persona = UdpPersona.query.get_or_404(udp_persona_id)
-    return render_template("udp_personas/detail.jinja2", udp_persona=udp_persona)
+    # Buscar contrapartes activas que coincidan por (nombres y apellido_primero), CURP o fecha de nacimiento
+    condiciones = [
+        (UdpContraparte.nombres == udp_persona.nombres) & (UdpContraparte.apellido_primero == udp_persona.apellido_primero)
+    ]
+    if udp_persona.curp:
+        condiciones.append(UdpContraparte.curp == udp_persona.curp)
+    if udp_persona.nacimiento_fecha:
+        condiciones.append(UdpContraparte.nacimiento_fecha == udp_persona.nacimiento_fecha)
+    posibles_contrapartes = (
+        UdpContraparte.query.filter(UdpContraparte.estatus == "A")
+        .filter(or_(*condiciones))
+        .order_by(UdpContraparte.apellido_primero, UdpContraparte.apellido_segundo, UdpContraparte.nombres)
+        .all()
+    )
+    return render_template("udp_personas/detail.jinja2", udp_persona=udp_persona, posibles_contrapartes=posibles_contrapartes)
 
 
 @udp_personas.route("/udp_personas/nuevo", methods=["GET", "POST"])

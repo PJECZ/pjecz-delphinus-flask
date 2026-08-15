@@ -57,7 +57,9 @@ line-length = 128
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.39.10",
     "black>=26.5.1",
     "isort>=8.0.1",
     "pytest>=9.1.1",
+    "ruff>=0.16.3",
 ]
