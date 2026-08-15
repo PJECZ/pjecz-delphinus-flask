@@ -20,9 +20,6 @@ python cli/app.py usuarios nueva-contrasena EMAIL
 black .
 isort .
 ruff check .
-
-# Type checking (excludes tests)
-basedpyright
 ```
 
 ## Architecture

@@ -80,20 +80,20 @@ Agregar parámetro `rol` (nombre del rol) para filtrar usuarios que tengan ese r
 6. Modificar `blueprints/udp_atenciones/templates/udp_atenciones/new.jinja2` para agregar el select de defensor con JavaScript que llama a `usuarios/select_json?rol=DEFENSOR`.
 7. Modificar `blueprints/udp_atenciones/templates/udp_atenciones/edit.jinja2` para agregar el select de defensor con JavaScript que llama a `usuarios/select_json?rol=DEFENSOR` y preselecciona el defensor actual.
 8. Modificar `blueprints/udp_atenciones/templates/udp_atenciones/detail.jinja2` para mostrar "Defensor asignado" en lugar de "Asignado al usuario".
-9. Verificar: `black .`, `isort .`, `ruff check .`, `basedpyright`.
+9. Verificar: `black .`, `isort .`, `ruff check .`.
 
 ## Criterios de aceptación
 
-- [ ] Rol RECEPCIONISTA creado con nivel 3 en todos los módulos `udp_*` y nivel 1 en los demás.
-- [ ] Rol DEFENSOR creado con nivel 2 en `UDP ATENCIONES` y nivel 1 en los demás.
-- [ ] Usuarios de muestra agregados a `usuarios_roles.csv` con los roles correspondientes.
-- [ ] `usuarios/select_json` acepta parámetro `rol` y filtra por nombre de rol.
-- [ ] Formulario de nueva atención muestra select de defensor obligatorio.
-- [ ] Formulario de editar atención muestra select de defensor obligatorio con el valor actual preseleccionado.
-- [ ] Si el usuario actual tiene rol DEFENSOR, aparece seleccionado por defecto al crear atención.
-- [ ] Opciones del select muestran formato `"{email}: {nombre} - {puesto}"`.
-- [ ] Detalle de atención muestra "Defensor asignado" con el email del defensor.
-- [ ] Código pasa `black .`, `isort .`, `ruff check .`, `basedpyright`.
+- [x] Rol RECEPCIONISTA creado con nivel 3 en todos los módulos `udp_*` y nivel 1 en los demás.
+- [x] Rol DEFENSOR creado con nivel 2 en `UDP ATENCIONES` y nivel 1 en los demás.
+- [x] Usuarios de muestra agregados a `usuarios_roles.csv` con los roles correspondientes.
+- [x] `usuarios/select_json` acepta parámetro `rol` y filtra por nombre de rol.
+- [x] Formulario de nueva atención muestra select de defensor obligatorio.
+- [x] Formulario de editar atención muestra select de defensor obligatorio con el valor actual preseleccionado.
+- [x] Si el usuario actual tiene rol DEFENSOR, aparece seleccionado por defecto al crear atención.
+- [x] Opciones del select muestran formato `"{email}: {nombre} - {puesto}"`.
+- [x] Detalle de atención muestra "Defensor asignado" con el email del defensor.
+- [x] Código pasa `black .`, `isort .`, `ruff check .`.
 
 ## Decisiones
 

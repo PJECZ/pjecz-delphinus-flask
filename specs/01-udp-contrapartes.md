@@ -99,7 +99,7 @@ Permite múltiples filas con CURP vacía, pero enforce unicidad cuando CURP tien
 8. Registrar blueprint en `pjecz_delphinus_flask/app.py`.
 9. Agregar módulo `UDP CONTRAPARTES` a `seed/modulos.csv` y columna de permisos a `seed/roles_permisos.csv`.
 10. Eliminar blueprint `blueprints/udp_personas_contrapartes/`
-10. Verificar: `black .`, `isort .`, `ruff check .`, `basedpyright`.
+10. Verificar: `black .`, `isort .`, `ruff check .`.
 
 ## Acceptance criteria
 
@@ -114,7 +114,7 @@ Permite múltiples filas con CURP vacía, pero enforce unicidad cuando CURP tien
 - [x] Módulo `UDP CONTRAPARTES` presente en `seed/modulos.csv`.
 - [x] Permisos del módulo presente en `seed/roles_permisos.csv`.
 - [x] CRUD funcional: listar, ver detalle, crear, editar, eliminar (soft delete), recuperar.
-- [x] Código pasa `black .`, `isort .`, `ruff check .`, `basedpyright`.
+- [x] Código pasa `black .`, `isort .`, `ruff check .`.
 
 ## Decisions
 

@@ -6,12 +6,14 @@ import json
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import or_
 
 from pjecz_delphinus_flask.blueprints.bitacoras.models import Bitacora
 from pjecz_delphinus_flask.blueprints.modulos.models import Modulo
 from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
 from pjecz_delphinus_flask.blueprints.udp_contrapartes.forms import UdpContraparteForm
 from pjecz_delphinus_flask.blueprints.udp_contrapartes.models import UdpContraparte
+from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
 from pjecz_delphinus_flask.lib.datatables import get_datatable_parameters, output_datatable_json
 from pjecz_delphinus_flask.lib.safe_string import safe_message, safe_string
@@ -103,7 +105,23 @@ def list_inactive():
 def detail(udp_contraparte_id):
     """Detalle de una Contraparte"""
     udp_contraparte = UdpContraparte.query.get_or_404(udp_contraparte_id)
-    return render_template("udp_contrapartes/detail.jinja2", udp_contraparte=udp_contraparte)
+    # Buscar personas activas que coincidan por (nombres y apellido_primero), CURP o fecha de nacimiento
+    condiciones = [
+        (UdpPersona.nombres == udp_contraparte.nombres) & (UdpPersona.apellido_primero == udp_contraparte.apellido_primero)
+    ]
+    if udp_contraparte.curp:
+        condiciones.append(UdpPersona.curp == udp_contraparte.curp)
+    if udp_contraparte.nacimiento_fecha:
+        condiciones.append(UdpPersona.nacimiento_fecha == udp_contraparte.nacimiento_fecha)
+    posibles_personas = (
+        UdpPersona.query.filter(UdpPersona.estatus == "A")
+        .filter(or_(*condiciones))
+        .order_by(UdpPersona.apellido_primero, UdpPersona.apellido_segundo, UdpPersona.nombres)
+        .all()
+    )
+    return render_template(
+        "udp_contrapartes/detail.jinja2", udp_contraparte=udp_contraparte, posibles_personas=posibles_personas
+    )
 
 
 @udp_contrapartes.route("/udp_contrapartes/nuevo", methods=["GET", "POST"])
