@@ -1,5 +1,5 @@
 """
-CLI UDP Personas
+CLI UDP Atenciones Contrapartes
 """
 
 from rich.console import Console
@@ -11,11 +11,11 @@ from pjecz_delphinus_flask.app import create_app
 app = create_app()
 app.app_context().push()
 
-udp_personas = Typer()
+udp_atenciones_contrapartes = Typer()
 
 
-@udp_personas.command()
+@udp_atenciones_contrapartes.command()
 def mostrar():
-    """Mostrar las personas"""
+    """Mostrar las atenciones-contrapartes"""
     console = Console()
-    console.print("Mostrando las personas...")
+    console.print("Mostrando las atenciones-contrapartes...")
