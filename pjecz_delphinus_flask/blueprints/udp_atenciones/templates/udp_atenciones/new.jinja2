@@ -16,6 +16,7 @@
             {% call f.form_group(form.distrito) %}{% endcall %}
             {% call f.form_group(form.autoridad) %}{% endcall %}
             {% call f.form_group(form.defensor) %}{% endcall %}
+            {% call f.form_group(form.visita) %}{% endcall %}
             {% call f.form_group(form.expediente) %}{% endcall %}
             {% call f.form_group(form.observaciones, rows="8") %}{% endcall %}
             {% call f.form_group(form.guardar) %}{% endcall %}
@@ -73,6 +74,20 @@
                     }
                 });
         });
+    </script>
+    <!-- Select Visita -->
+    <script>
+        const visitaSelect = document.getElementById('visita');
+        fetch("{{ url_for('udp_tipos_visitas.select_json') }}")
+            .then(response => response.json())
+            .then(data => {
+                data.results.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.text;
+                    option.text = item.text;
+                    visitaSelect.appendChild(option);
+                });
+            });
     </script>
     <!-- Select Defensor -->
     <script>

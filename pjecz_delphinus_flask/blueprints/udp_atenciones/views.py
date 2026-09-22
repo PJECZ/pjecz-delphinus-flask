@@ -53,7 +53,7 @@ def datatable_json():
                 },
                 "udp_tipo_tramite_nombre": resultado.udp_tipo_tramite.nombre,
                 "usuario_email": resultado.usuario.email,
-                "autoridad_clave": resultado.autoridad.clave,
+                "autoridad_clave": resultado.autoridad.clave if resultado.autoridad and resultado.autoridad.clave else "",
                 "expediente": resultado.expediente or "",
             }
         )
@@ -102,6 +102,7 @@ def new(udp_persona_id):
             udp_tipo_tramite_id=form.udp_tipo_tramite.data,
             usuario_id=form.defensor.data,
             autoridad_id=form.autoridad.data,
+            visita=form.visita.data,
             expediente=form.expediente.data,
             observaciones=safe_string(form.observaciones.data, save_enie=True, max_len=1024),
         )
@@ -139,6 +140,7 @@ def edit(udp_atencion_id):
         udp_atencion.udp_tipo_tramite_id = form.udp_tipo_tramite.data
         udp_atencion.autoridad_id = form.autoridad.data
         udp_atencion.usuario_id = form.defensor.data
+        udp_atencion.visita = form.visita.data
         udp_atencion.expediente = form.expediente.data
         udp_atencion.observaciones = safe_string(form.observaciones.data, save_enie=True, max_len=1024)
         udp_atencion.save()
@@ -154,6 +156,7 @@ def edit(udp_atencion_id):
     form.udp_tipo_tramite.data = udp_atencion.udp_tipo_tramite_id
     form.autoridad.data = udp_atencion.autoridad_id
     form.defensor.data = udp_atencion.usuario_id
+    form.visita.data = udp_atencion.visita
     form.expediente.data = udp_atencion.expediente
     form.observaciones.data = udp_atencion.observaciones
     return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)

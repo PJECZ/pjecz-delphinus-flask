@@ -16,6 +16,7 @@ class UdpAtencionForm(FlaskForm):
     distrito = SelectField("Distrito", validators=[DataRequired()], choices=None, validate_choice=False)
     autoridad = SelectField("Autoridad", validators=[DataRequired()], choices=None, validate_choice=False)
     defensor = SelectField("Defensor", validators=[DataRequired()], choices=None, validate_choice=False)
+    visita = SelectField("Visita", validators=[Optional()], choices=None, validate_choice=False)
     expediente = StringField("Expediente", validators=[Optional(), Regexp(EXPEDIENTE_REGEXP)])
     observaciones = TextAreaField("Observaciones", validators=[Optional(), Length(max=1024)])
     guardar = SubmitField("Guardar")
