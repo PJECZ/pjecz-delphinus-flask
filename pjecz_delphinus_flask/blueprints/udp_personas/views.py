@@ -254,3 +254,21 @@ def recover(udp_persona_id):
         bitacora.save()
         flash(bitacora.descripcion, "success")
     return redirect(url_for("udp_personas.detail", udp_persona_id=udp_persona.id))
+
+
+@udp_personas.route("/udp_personas/select_json", methods=["GET", "POST"])
+def select_json():
+    """Proporcionar personas activas para elegir como contraparte."""
+    consulta = UdpPersona.query.filter_by(estatus="A")
+    if "searchTerm" in request.args:
+        search_term = safe_string(request.args.get("searchTerm", ""), save_enie=True)
+        if len(search_term) >= 4:
+            consulta = consulta.filter(
+                UdpPersona.curp.contains(search_term)
+                | UdpPersona.nombres.contains(search_term)
+                | UdpPersona.apellido_primero.contains(search_term)
+                | UdpPersona.apellido_segundo.contains(search_term)
+            )
+    consulta = consulta.order_by(UdpPersona.apellido_primero, UdpPersona.apellido_segundo, UdpPersona.nombres)
+    resultados = [{"id": persona.id, "text": f"{persona.nombre_completo} - {persona.curp or 'Sin CURP'}"} for persona in consulta.all()]
+    return {"results": resultados, "pagination": {"more": False}}

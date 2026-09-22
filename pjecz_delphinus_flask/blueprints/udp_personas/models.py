@@ -37,7 +37,12 @@ class UdpPersona(database.Model, UniversalMixin):
     observaciones: Mapped[Optional[str]] = mapped_column(String(1024), default="", server_default="")
 
     # Hijos
-    udp_atenciones: Mapped[list["UdpAtencion"]] = relationship(back_populates="udp_persona")
+    udp_atenciones: Mapped[list["UdpAtencion"]] = relationship(
+        back_populates="udp_persona", foreign_keys="UdpAtencion.udp_persona_id"
+    )
+    udp_atenciones_como_contraparte: Mapped[list["UdpAtencion"]] = relationship(
+        back_populates="contraparte", foreign_keys="UdpAtencion.contraparte_id"
+    )
     udp_domicilios: Mapped[list["UdpDomicilio"]] = relationship(back_populates="udp_persona")
     udp_ingresos: Mapped[list["UdpIngreso"]] = relationship(back_populates="udp_persona")
     udp_visitas: Mapped[list["UdpVisita"]] = relationship(back_populates="udp_persona")

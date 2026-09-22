@@ -6,6 +6,8 @@ import json
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from pjecz_delphinus_flask.blueprints.bitacoras.models import Bitacora
 from pjecz_delphinus_flask.blueprints.modulos.models import Modulo
@@ -14,12 +16,59 @@ from pjecz_delphinus_flask.blueprints.udp_atenciones.forms import UdpAtencionFor
 from pjecz_delphinus_flask.blueprints.udp_atenciones.models import UdpAtencion
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
+from pjecz_delphinus_flask.config.extensions import database
 from pjecz_delphinus_flask.lib.datatables import get_datatable_parameters, output_datatable_json
 from pjecz_delphinus_flask.lib.safe_string import safe_message, safe_string
 
 MODULO = "UDP ATENCIONES"
 
 udp_atenciones = Blueprint("udp_atenciones", __name__, template_folder="templates")
+
+
+def get_contraparte(form: UdpAtencionForm) -> UdpPersona | None:
+    """Obtener una contraparte existente o crearla desde el formulario."""
+    if form.udp_contraparte.data:
+        contraparte = UdpPersona.query.filter_by(id=form.udp_contraparte.data, estatus="A").first()
+        if contraparte:
+            return contraparte
+        flash("La contraparte seleccionada no está disponible.", "warning")
+        return None
+    if not form.nueva_contraparte.data:
+        flash("Seleccione una contraparte o registre una nueva.", "warning")
+        return None
+    required_fields = (
+        (form.contraparte_nombres.data, "Nombres"),
+        (form.contraparte_apellido_primero.data, "Apellido Primero"),
+        (form.contraparte_udp_sexo.data, "Sexo"),
+        (form.contraparte_udp_tipo_condicion.data, "Tipo de Condición"),
+    )
+    missing_fields = [label for value, label in required_fields if not value]
+    if missing_fields:
+        flash(f"Complete los campos requeridos de la contraparte: {', '.join(missing_fields)}.", "warning")
+        return None
+    return UdpPersona(
+        nombres=safe_string(form.contraparte_nombres.data, save_enie=True),
+        apellido_primero=safe_string(form.contraparte_apellido_primero.data, save_enie=True),
+        apellido_segundo=safe_string(form.contraparte_apellido_segundo.data, save_enie=True),
+        nacimiento_fecha=form.contraparte_nacimiento_fecha.data,
+        udp_sexo_id=form.contraparte_udp_sexo.data,
+        udp_tipo_condicion_id=form.contraparte_udp_tipo_condicion.data,
+        curp=safe_string(form.contraparte_curp.data),
+        observaciones=safe_string(form.contraparte_observaciones.data, save_enie=True, max_len=1024),
+    )
+
+
+def save_atencion_contraparte(udp_atencion: UdpAtencion, contraparte: UdpPersona) -> bool:
+    """Guardar una atención y su contraparte en una sola transacción."""
+    udp_atencion.contraparte = contraparte
+    database.session.add_all((udp_atencion, contraparte))
+    try:
+        database.session.commit()
+    except IntegrityError:
+        database.session.rollback()
+        flash("No fue posible guardar la contraparte. Verifique que la CURP no esté duplicada.", "warning")
+        return False
+    return True
 
 
 @udp_atenciones.before_request
@@ -39,7 +88,12 @@ def datatable_json():
     else:
         consulta = consulta.filter_by(estatus="A")
     if "udp_persona_id" in request.form:
-        consulta = consulta.filter(UdpAtencion.udp_persona_id == request.form["udp_persona_id"])
+        consulta = consulta.filter(
+            or_(
+                UdpAtencion.udp_persona_id == request.form["udp_persona_id"],
+                UdpAtencion.contraparte_id == request.form["udp_persona_id"],
+            )
+        )
     registros = consulta.order_by(UdpAtencion.id.desc()).offset(start).limit(rows_per_page).all()
     total = consulta.count()
     data = []
@@ -97,6 +151,16 @@ def new(udp_persona_id):
     udp_persona = UdpPersona.query.get_or_404(udp_persona_id)
     form = UdpAtencionForm()
     if form.validate_on_submit():
+        contraparte = get_contraparte(form)
+        if not contraparte:
+            return render_template(
+                "udp_atenciones/new.jinja2",
+                form=form,
+                udp_persona=udp_persona,
+                distrito_por_defecto=current_user.autoridad.distrito,
+                autoridad_por_defecto=current_user.autoridad,
+                defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
+            )
         udp_atencion = UdpAtencion(
             udp_persona_id=udp_persona.id,
             udp_tipo_tramite_id=form.udp_tipo_tramite.data,
@@ -106,7 +170,15 @@ def new(udp_persona_id):
             expediente=form.expediente.data,
             observaciones=safe_string(form.observaciones.data, save_enie=True, max_len=1024),
         )
-        udp_atencion.save()
+        if not save_atencion_contraparte(udp_atencion, contraparte):
+            return render_template(
+                "udp_atenciones/new.jinja2",
+                form=form,
+                udp_persona=udp_persona,
+                distrito_por_defecto=current_user.autoridad.distrito,
+                autoridad_por_defecto=current_user.autoridad,
+                defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
+            )
         bitacora = Bitacora(
             modulo=Modulo.query.filter_by(nombre=MODULO).first(),
             usuario=current_user,
@@ -137,13 +209,17 @@ def edit(udp_atencion_id):
     udp_atencion = UdpAtencion.query.get_or_404(udp_atencion_id)
     form = UdpAtencionForm()
     if form.validate_on_submit():
+        contraparte = get_contraparte(form)
+        if not contraparte:
+            return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
         udp_atencion.udp_tipo_tramite_id = form.udp_tipo_tramite.data
         udp_atencion.autoridad_id = form.autoridad.data
         udp_atencion.usuario_id = form.defensor.data
         udp_atencion.visita = form.visita.data
         udp_atencion.expediente = form.expediente.data
         udp_atencion.observaciones = safe_string(form.observaciones.data, save_enie=True, max_len=1024)
-        udp_atencion.save()
+        if not save_atencion_contraparte(udp_atencion, contraparte):
+            return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
         bitacora = Bitacora(
             modulo=Modulo.query.filter_by(nombre=MODULO).first(),
             usuario=current_user,
@@ -157,6 +233,8 @@ def edit(udp_atencion_id):
     form.autoridad.data = udp_atencion.autoridad_id
     form.defensor.data = udp_atencion.usuario_id
     form.visita.data = udp_atencion.visita
+    if udp_atencion.contraparte:
+        form.udp_contraparte.data = udp_atencion.contraparte_id
     form.expediente.data = udp_atencion.expediente
     form.observaciones.data = udp_atencion.observaciones
     return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)

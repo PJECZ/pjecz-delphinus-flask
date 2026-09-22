@@ -26,6 +26,9 @@
             {{ detail.label_value('Distrito', udp_atencion.autoridad.distrito.clave + ' : ' + udp_atencion.autoridad.distrito.nombre_corto) }}
             {{ detail.label_value('Autoridad', udp_atencion.autoridad.clave + ' : ' + udp_atencion.autoridad.descripcion_corta) }}
             {{ detail.label_value('Visita', udp_atencion.visita) }}
+            {% if udp_atencion.contraparte %}
+                {{ detail.label_value('Contraparte', udp_atencion.contraparte.nombre_completo, url_for('udp_personas.detail', udp_persona_id=udp_atencion.contraparte_id)) }}
+            {% endif %}
             {{ detail.label_value('Expediente', udp_atencion.expediente) }}
             {{ detail.label_value('Observaciones', udp_atencion.observaciones) }}
             {{ detail.label_value('Defensor asignado', udp_atencion.usuario.email) }}

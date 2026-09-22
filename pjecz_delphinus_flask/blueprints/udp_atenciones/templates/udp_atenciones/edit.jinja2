@@ -4,6 +4,11 @@
 
 {% block title %}Editar Atención {{ udp_atencion.id }}{% endblock %}
 
+{% block custom_head %}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://storage.googleapis.com/pjecz-informatica/static/css/select2.css" rel="stylesheet" />
+{% endblock %}
+
 {% block topbar_actions %}
     {{ topbar.page('Editar Atención ' + udp_atencion.id | string) }}
 {% endblock %}
@@ -17,6 +22,18 @@
             {% call f.form_group(form.autoridad) %}{% endcall %}
             {% call f.form_group(form.defensor) %}{% endcall %}
             {% call f.form_group(form.visita) %}{% endcall %}
+            {% call f.form_group(form.udp_contraparte) %}{% endcall %}
+            {% call f.form_group(form.nueva_contraparte) %}{% endcall %}
+            <div id="nueva-contraparte-campos" class="d-none">
+                {% call f.form_group(form.contraparte_nombres) %}{% endcall %}
+                {% call f.form_group(form.contraparte_apellido_primero) %}{% endcall %}
+                {% call f.form_group(form.contraparte_apellido_segundo) %}{% endcall %}
+                {% call f.form_group(form.contraparte_nacimiento_fecha) %}{% endcall %}
+                {% call f.form_group(form.contraparte_udp_sexo) %}{% endcall %}
+                {% call f.form_group(form.contraparte_udp_tipo_condicion) %}{% endcall %}
+                {% call f.form_group(form.contraparte_curp) %}{% endcall %}
+                {% call f.form_group(form.contraparte_observaciones, rows="4") %}{% endcall %}
+            </div>
             {% call f.form_group(form.expediente) %}{% endcall %}
             {% call f.form_group(form.observaciones, rows="8") %}{% endcall %}
             {% call f.form_group(form.guardar) %}{% endcall %}
@@ -73,6 +90,61 @@
                     autoridadSelect.value = {{ udp_atencion.autoridad_id }}; // Seleccionar la autoridad
                 });
         });
+    </script>
+    <!-- Select Contraparte -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        const nuevaContraparte = document.getElementById('nueva_contraparte');
+        const nuevaContraparteCampos = document.getElementById('nueva-contraparte-campos');
+        const contraparteSelect = $('#udp_contraparte');
+
+        function actualizarFormularioContraparte() {
+            nuevaContraparteCampos.classList.toggle('d-none', !nuevaContraparte.checked);
+            contraparteSelect.prop('disabled', nuevaContraparte.checked);
+        }
+
+        contraparteSelect.select2({
+            placeholder: 'Buscar por nombre o CURP',
+            allowClear: true,
+            minimumInputLength: 4,
+            ajax: {
+                url: "{{ url_for('udp_personas.select_json') }}",
+                dataType: 'json',
+                data: params => ({searchTerm: params.term})
+            }
+        });
+        {% if udp_atencion.contraparte %}
+            contraparteSelect.append(new Option(
+            {{ udp_atencion.contraparte.nombre_completo | tojson }},
+            {{ udp_atencion.contraparte_id | tojson }},
+                true,
+                true
+            )).trigger('change');
+        {% endif %}
+        nuevaContraparte.addEventListener('change', actualizarFormularioContraparte);
+        actualizarFormularioContraparte();
+        fetch("{{ url_for('udp_sexos.select_json') }}")
+            .then(response => response.json())
+            .then(data => {
+                const sexoSelect = document.getElementById('contraparte_udp_sexo');
+                data.results.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.text = item.text;
+                    sexoSelect.appendChild(option);
+                });
+            });
+        fetch("{{ url_for('udp_tipos_condiciones.select_json') }}")
+            .then(response => response.json())
+            .then(data => {
+                const condicionSelect = document.getElementById('contraparte_udp_tipo_condicion');
+                data.results.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.text = item.text;
+                    condicionSelect.appendChild(option);
+                });
+            });
     </script>
     <!-- Select Visita -->
     <script>

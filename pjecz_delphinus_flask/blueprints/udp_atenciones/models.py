@@ -2,8 +2,9 @@
 UDP Atenciones, modelos
 """
 
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
 from sqlalchemy import ForeignKey, String, Text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -24,7 +25,11 @@ class UdpAtencion(database.Model, UniversalMixin):
     autoridad_id: Mapped[Optional[int]] = mapped_column(ForeignKey("autoridades.id"))
     autoridad: Mapped[Optional["Autoridad"]] = relationship(back_populates="udp_atenciones")
     udp_persona_id: Mapped[int] = mapped_column(ForeignKey("udp_personas.id"))
-    udp_persona: Mapped["UdpPersona"] = relationship(back_populates="udp_atenciones")
+    udp_persona: Mapped["UdpPersona"] = relationship(back_populates="udp_atenciones", foreign_keys=[udp_persona_id])
+    contraparte_id: Mapped[Optional[int]] = mapped_column(ForeignKey("udp_personas.id"))
+    contraparte: Mapped[Optional["UdpPersona"]] = relationship(
+        back_populates="udp_atenciones_como_contraparte", foreign_keys=[contraparte_id]
+    )
     udp_tipo_tramite_id: Mapped[int] = mapped_column(ForeignKey("udp_tipos_tramites.id"))
     udp_tipo_tramite: Mapped["UdpTipoTramite"] = relationship(back_populates="udp_atenciones")
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
@@ -43,7 +48,6 @@ class UdpAtencion(database.Model, UniversalMixin):
     canalizado: Mapped[Optional[str]] = mapped_column(String(8), default="", server_default="")
     fecha_canalizado: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
-    # Hijos: Solo se puede tener una contraparte por atención, por lo que se define una relación uno a uno
     udp_atencion_contraparte: Mapped[Optional["UdpAtencionContraparte"]] = relationship(back_populates="udp_atencion")
 
     def __repr__(self):
