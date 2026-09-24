@@ -157,7 +157,7 @@ def new(udp_persona_id):
                 "udp_atenciones/new.jinja2",
                 form=form,
                 udp_persona=udp_persona,
-                distrito_por_defecto=current_user.autoridad.distrito,
+                distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
                 autoridad_por_defecto=current_user.autoridad,
                 defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
             )
@@ -175,7 +175,7 @@ def new(udp_persona_id):
                 "udp_atenciones/new.jinja2",
                 form=form,
                 udp_persona=udp_persona,
-                distrito_por_defecto=current_user.autoridad.distrito,
+                distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
                 autoridad_por_defecto=current_user.autoridad,
                 defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
             )
@@ -196,7 +196,7 @@ def new(udp_persona_id):
         "udp_atenciones/new.jinja2",
         form=form,
         udp_persona=udp_persona,
-        distrito_por_defecto=current_user.autoridad.distrito,
+        distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
         autoridad_por_defecto=current_user.autoridad,
         defensor_id=defensor_id,
     )

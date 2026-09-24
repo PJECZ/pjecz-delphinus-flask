@@ -28,11 +28,15 @@ from pjecz_delphinus_flask.blueprints.udp_sexos.models import UdpSexo
 from pjecz_delphinus_flask.blueprints.udp_tipos_condiciones.models import UdpTipoCondicion
 from pjecz_delphinus_flask.blueprints.udp_tipos_tramites.models import UdpTipoTramite
 from pjecz_delphinus_flask.blueprints.udp_tipos_visitas.models import UdpTipoVisita
+from pjecz_delphinus_flask.blueprints.udp_ingresos.models import UdpIngreso
+from pjecz_delphinus_flask.blueprints.udp_domicilios.models import UdpDomicilio
 from pjecz_delphinus_flask.blueprints.usuarios.models import Usuario
 from pjecz_delphinus_flask.blueprints.usuarios_roles.models import UsuarioRol
 from pjecz_delphinus_flask.config.extensions import database, pwd_context
 from pjecz_delphinus_flask.lib.pwgen import generar_contrasena
-from pjecz_delphinus_flask.lib.safe_string import safe_clave, safe_email, safe_string
+from pjecz_delphinus_flask.lib.safe_string import safe_clave, safe_email, safe_string, safe_int
+
+
 
 # Rutas a los archivos CSV
 AUTORIDADES_CSV = "seed/autoridades.csv"
@@ -44,7 +48,7 @@ PERMISOS_CSV = "seed/roles_permisos.csv"
 ROLES_CSV = "seed/roles_permisos.csv"
 USUARIOS_CSV = "seed/usuarios_roles.csv"
 USUARIOS_ROLES_CSV = "seed/usuarios_roles.csv"
-UDP_PERSONAS_CSV = "seed/USUARIOS.csv"
+UDP_PERSONAS_CSV = "seed/PERSONAS.csv"
 UDP_PERSONAS_ATENCIONES_CSV = "seed/ATENCIONES.csv"
 UDP_SEXOS_CSV = "seed/udp_sexos.csv"
 UDP_TIPOS_CONDICIONES_CSV = "seed/udp_tipos_condiciones.csv"
@@ -532,7 +536,9 @@ def alimentar_udp_personas():
         rows = csv.DictReader(puntero)
         for row in rows:
             udp_sexo = obtener_o_crear_udp_sexo(row["SEXO"])
+            udp_sexo_contraparte = obtener_o_crear_udp_sexo('ND') 
             udp_tipo_condicion = obtener_o_crear_udp_tipo_condicion(row["CONDICIÓN"])
+            udp_tipo_condicion_contraparte = obtener_o_crear_udp_tipo_condicion('NA')
             nombres, apellido_primero, apellido_segundo = partir_nombre_completo(row["NOMBRE_USUARIO"])
             udp_persona = obtener_o_crear_udp_persona(
                 nombre_completo=row["NOMBRE_USUARIO"],
@@ -541,9 +547,21 @@ def alimentar_udp_personas():
                 nacimiento_fecha=convertir_fecha(row["FECH_NAC_USUARIO"]),
                 
             )
-            
+            udp_persona_contraparte= obtener_o_crear_udp_persona(
+                nombre_completo=row["NOMBRE_CONTRAPARTE"],
+                udp_sexo=udp_sexo_contraparte,
+                udp_tipo_condicion=udp_tipo_condicion_contraparte,
+                nacimiento_fecha=convertir_fecha(row["FECH_NAC_CONTRAPARTE"]),
+            )
+            UdpIngreso(
+                udp_persona=udp_persona,
+                ocupacion=safe_string(row["OCUPACIÓN"]) if "OCUPACIÓN" in row else 'ND',
+                ingresos=safe_int(row["INGRESOS"]) if "INGRESOS" in row else 0,
+                observaciones=safe_string(row["OBSERVACIONES_INGRESO"], max_len=2048, save_enie=True, to_uppercase=False) if "OBSERVACIONES_INGRESO" in row else 'ND',
+            ).save()
             UdpAtencion(
                 udp_persona=udp_persona,
+                contraparte_id=udp_persona_contraparte.id,
                 udp_tipo_tramite=obtener_o_crear_udp_tipo_tramite(row["TRAMITE"]),
                 expediente=safe_string(row["NO_EXPEDIENTE"]) if row["NO_EXPEDIENTE"] else "",
                 observaciones=safe_string(row["OBSERVACIONES"], max_len=2048, save_enie=True, to_uppercase=False),
@@ -558,7 +576,21 @@ def alimentar_udp_personas():
                 canalizado=row["CANALIZADO"] if "CANALIZADO" in row else None,
                 fecha_canalizado=convertir_fecha(row["FECHA_CANALIZADO"]) if "FECHA_CANALIZADO" in row else None,
             ).save()
+            municipio_id=66
+            UdpDomicilio(
+                udp_persona=udp_persona,
+                municipio_id=municipio_id,
+                calle=safe_string(row["CALLE"]) if "CALLE" in row else '',
+                num_exterior=safe_string(row["NUMERO_EXTERIOR"]) if "NUMERO_EXTERIOR" in row else '',
+                num_interior=safe_string(row["NUMERO_INTERIOR"]) if "NUMERO_INTERIOR" in row else '',
+                colonia=safe_string(row["COLONIA"]) if "COLONIA" in row else '',
+                codigo_postal=safe_string(row["CODIGO_POSTAL"]) if "CODIGO_POSTAL" in row else 0,
+                              
+            ).save()
             contador += 1
+        """ for row in rows:
+            console.print(f"row ={row}") """
+        
     console.print(f"[green]{contador} udp_personas alimentados.")
 
 
@@ -609,7 +641,9 @@ def obtener_o_crear_usuario_por_nombre(nombre_completo: str, autoridad: Autorida
             contrasena=pwd_context.hash(generar_contrasena()),
         ).save()
     return usuario
-
+def obtener_municipio(nombre: str) -> Municipio:
+    """Obtener un Municipio por su nombre"""
+    return Municipio.query.filter_by(nombre=nombre).first()
 
 def alimentar_atenciones():
     """Alimentar UDP Personas Atenciones"""
@@ -625,7 +659,7 @@ def alimentar_atenciones():
     if autoridad_nd is None:
         console.print("[red]ERROR: No se encontró la autoridad 'ND'.")
         sys.exit(1)
-    console.print("Alimentando atenciones...")
+    console.print("Alimentando atenciones ->...")
     contador = 0
     with open(ruta, encoding="cp1252") as puntero:
         rows = csv.DictReader(puntero)
@@ -1063,10 +1097,20 @@ def alimentar():
     alimentar_udp_tipos_tramites()
     alimentar_udp_tipos_visitas()
     alimentar_udp_personas()    
-    alimentar_atenciones()
+    #alimentar_atenciones()
     console.print("[green]La base de datos se ha alimentado correctamente.")
 
+def eliminar_personas():
+    """Eliminar todas las personas de la base de datos"""
+    for persona in UdpPersona.query.all():
+        database.session.delete(persona)
+    database.session.commit()
 
+@db.command()
+def alimentar_personas():
+    """Alimentar la base de datos con los datos de personas en el archivo CSV correspondiente"""
+    #eliminar_personas()
+    alimentar_udp_personas()
 @db.command()
 def reiniciar():
     """Reiniciar la base de datos (inicializar y alimentar)"""

@@ -23,8 +23,8 @@
         <div class="row">
             {{ detail.label_value('Persona', udp_atencion.udp_persona.nombre_completo, url_for('udp_personas.detail', udp_persona_id=udp_atencion.udp_persona_id)) }}
             {{ detail.label_value('Tipo de Trámite', udp_atencion.udp_tipo_tramite.nombre) }}
-            {{ detail.label_value('Distrito', udp_atencion.autoridad.distrito.clave + ' : ' + udp_atencion.autoridad.distrito.nombre_corto) }}
-            {{ detail.label_value('Autoridad', udp_atencion.autoridad.clave + ' : ' + udp_atencion.autoridad.descripcion_corta) }}
+            {{ detail.label_value('Distrito', udp_atencion.autoridad.distrito.clave + ' : ' + udp_atencion.autoridad.distrito.nombre_corto if udp_atencion.autoridad and udp_atencion.autoridad.distrito else '') }}
+            {{ detail.label_value('Autoridad', udp_atencion.autoridad.clave + ' : ' + udp_atencion.autoridad.descripcion_corta if udp_atencion.autoridad else '') }}
             {{ detail.label_value('Visita', udp_atencion.visita) }}
             {% if udp_atencion.contraparte %}
                 {{ detail.label_value('Contraparte', udp_atencion.contraparte.nombre_completo, url_for('udp_personas.detail', udp_persona_id=udp_atencion.contraparte_id)) }}

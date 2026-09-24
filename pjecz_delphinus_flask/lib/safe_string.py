@@ -278,3 +278,17 @@ def safe_uuid(input_str: str) -> str:
         return input_str
     except ValueError as error:
         return ""
+
+def safe_int(input_str, is_optional=False) -> int:
+    """Safe int"""
+    if not isinstance(input_str, (str, int)):
+        return 0
+    if isinstance(input_str, int):
+        return input_str
+    stripped = input_str.strip()
+    if is_optional and stripped == "":
+        return 0
+    try:
+        return int(stripped)
+    except ValueError:
+        return 0

@@ -42,6 +42,7 @@ class UdpAtencion(database.Model, UniversalMixin):
     visita: Mapped[Optional[str]] = mapped_column(String(256), default="", server_default="")
     como_se_entero: Mapped[Optional[str]] = mapped_column(String(256), default="", server_default="")
     atendio: Mapped[Optional[str]] = mapped_column(String(256), default="", server_default="")
+    estatus: Mapped[Optional[str]] = mapped_column(String(32), default="", server_default="")
     hora_salida: Mapped[Optional[datetime]] = mapped_column(DateTime)
     observaciones_aj: Mapped[Optional[str]] = mapped_column(Text, default="", server_default="")
     fecha_hora_aj: Mapped[Optional[datetime]] = mapped_column(DateTime)
