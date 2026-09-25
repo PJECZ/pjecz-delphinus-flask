@@ -23,7 +23,7 @@ from pjecz_delphinus_flask.blueprints.municipios.models import Municipio
 from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
 from pjecz_delphinus_flask.blueprints.roles.models import Rol
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
-from pjecz_delphinus_flask.blueprints.udp_atenciones.models import UdpAtencion
+from pjecz_delphinus_flask.blueprints.udp_atenciones.models import Estatus, UdpAtencion
 from pjecz_delphinus_flask.blueprints.udp_sexos.models import UdpSexo
 from pjecz_delphinus_flask.blueprints.udp_tipos_condiciones.models import UdpTipoCondicion
 from pjecz_delphinus_flask.blueprints.udp_tipos_tramites.models import UdpTipoTramite
@@ -54,6 +54,7 @@ UDP_SEXOS_CSV = "seed/udp_sexos.csv"
 UDP_TIPOS_CONDICIONES_CSV = "seed/udp_tipos_condiciones.csv"
 UDP_TIPOS_TRAMITES_CSV = "seed/udp_tipos_tramites.csv"
 UDP_TIPOS_VISITAS_CSV = "seed/udp_tipos_visitas.csv"
+UDP_ESTATUS_CSV = "seed/udp_estatus.csv"
 
 # Cargar variables de entorno
 load_dotenv()
@@ -471,6 +472,30 @@ def alimentar_udp_tipos_visitas():
             contador += 1
     console.print(f"[green]{contador} udp_tipos_visitas alimentados.")
 
+
+def alimentar_estatus():
+    """Alimentar estados funcionales de atenciones."""
+    console = Console()
+    ruta = Path(UDP_ESTATUS_CSV)
+    if not ruta.exists():
+        console.print(f"[red]ERROR: {ruta.name} no se encontró.")
+        sys.exit(1)
+    if not ruta.is_file():
+        console.print(f"[red]ERROR: {ruta.name} no es un archivo.")
+        sys.exit(1)
+    console.print("Alimentando estatus...")
+    contador = 0
+    with open(ruta, encoding="utf8") as puntero:
+        rows = csv.DictReader(puntero)
+        for row in rows:
+            estatus_id = int(row["estatus_id"])
+            if estatus_id != contador + 1:
+                console.print(f"[red]ERROR: estatus_id {estatus_id} no es consecutivo")
+                sys.exit(1)
+            Estatus(nombre=safe_string(row["nombre"], to_uppercase=False)).save()
+            contador += 1
+    console.print(f"[green]{contador} estatus alimentados.")
+
 def obtener_o_crear_udp_sexo(nombre: str) -> UdpSexo:
     """Obtener un UdpSexo por nombre, o crearlo si no existe"""
     nombre = safe_string(nombre, save_enie=True)
@@ -575,6 +600,7 @@ def alimentar_udp_personas():
                 fecha_hora_aj=convertir_fecha(row["FECHA_HORA_AJ"]) if "FECHA_HORA_AJ" in row else None,
                 canalizado=row["CANALIZADO"] if "CANALIZADO" in row else None,
                 fecha_canalizado=convertir_fecha(row["FECHA_CANALIZADO"]) if "FECHA_CANALIZADO" in row else None,
+                estatus_id=3
             ).save()
             municipio_id=66
             UdpDomicilio(
@@ -592,7 +618,7 @@ def alimentar_udp_personas():
             console.print(f"row ={row}") """
         
     console.print(f"[green]{contador} udp_personas alimentados.")
-
+    
 
 def obtener_o_crear_udp_tipo_tramite(nombre: str) -> UdpTipoTramite:
     """Obtener un UdpTipoTramite por nombre, o crearlo si no existe"""
@@ -1096,6 +1122,7 @@ def alimentar():
     alimentar_udp_tipos_condiciones()
     alimentar_udp_tipos_tramites()
     alimentar_udp_tipos_visitas()
+    alimentar_estatus()
     alimentar_udp_personas()    
     #alimentar_atenciones()
     console.print("[green]La base de datos se ha alimentado correctamente.")

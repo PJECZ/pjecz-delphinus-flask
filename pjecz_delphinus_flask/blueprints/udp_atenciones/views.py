@@ -3,6 +3,7 @@ UDP Atenciones, vistas
 """
 
 import json
+from datetime import datetime, time
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
@@ -13,9 +14,11 @@ from pjecz_delphinus_flask.blueprints.bitacoras.models import Bitacora
 from pjecz_delphinus_flask.blueprints.modulos.models import Modulo
 from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
 from pjecz_delphinus_flask.blueprints.udp_atenciones.forms import UdpAtencionForm
-from pjecz_delphinus_flask.blueprints.udp_atenciones.models import UdpAtencion
+from pjecz_delphinus_flask.blueprints.udp_atenciones.models import Estatus, UdpAtencion
+from pjecz_delphinus_flask.blueprints.udp_atenciones.services import asignar_datos_iniciales
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
+from pjecz_delphinus_flask.blueprints.usuarios.models import Usuario
 from pjecz_delphinus_flask.config.extensions import database
 from pjecz_delphinus_flask.lib.datatables import get_datatable_parameters, output_datatable_json
 from pjecz_delphinus_flask.lib.safe_string import safe_message, safe_string
@@ -63,12 +66,35 @@ def save_atencion_contraparte(udp_atencion: UdpAtencion, contraparte: UdpPersona
     udp_atencion.contraparte = contraparte
     database.session.add_all((udp_atencion, contraparte))
     try:
+        if udp_atencion.id is None:
+            asignar_datos_iniciales(udp_atencion, udp_atencion.visita)
         database.session.commit()
-    except IntegrityError:
+    except (IntegrityError, ValueError) as error:
         database.session.rollback()
-        flash("No fue posible guardar la contraparte. Verifique que la CURP no esté duplicada.", "warning")
+        mensaje = "No fue posible guardar la contraparte. Verifique que la CURP no esté duplicada."
+        if isinstance(error, ValueError):
+            mensaje = str(error)
+        flash(mensaje, "warning")
         return False
     return True
+
+
+def configurar_estatus(form: UdpAtencionForm) -> None:
+    """Cargar estados funcionales activos en el formulario."""
+    form.estatus_id.choices = [(str(estatus.id), estatus.nombre.title()) for estatus in Estatus.query.filter_by(estatus="A").order_by(Estatus.id)]
+
+
+def get_defensor(form: UdpAtencionForm) -> Usuario | None:
+    """Resolver un defensor activo seleccionado en el formulario."""
+    try:
+        defensor_id = int(form.defensor.data)
+    except (TypeError, ValueError):
+        defensor_id = None
+    defensor = Usuario.query.filter_by(id=defensor_id, estatus="A").first() if defensor_id is not None else None
+    if defensor is None or "DEFENSOR" not in defensor.get_roles():
+        flash("Seleccione un defensor activo.", "warning")
+        return None
+    return defensor
 
 
 @udp_atenciones.before_request
@@ -85,8 +111,8 @@ def datatable_json():
     consulta = UdpAtencion.query
     if "estatus" in request.form:
         consulta = consulta.filter_by(estatus=request.form["estatus"])
-    else:
-        consulta = consulta.filter_by(estatus="A")
+    """ else:
+        consulta = consulta.filter_by(estatus="A") """
     if "udp_persona_id" in request.form:
         consulta = consulta.filter(
             or_(
@@ -109,6 +135,12 @@ def datatable_json():
                 "usuario_email": resultado.usuario.email,
                 "autoridad_clave": resultado.autoridad.clave if resultado.autoridad and resultado.autoridad.clave else "",
                 "expediente": resultado.expediente or "",
+                "folio": resultado.folio or "",
+                "tipo_atencion": resultado.visita or "",
+                "fecha_siguiente_cita": (
+                    resultado.fecha_siguiente_cita.strftime("%Y-%m-%d") if resultado.fecha_siguiente_cita else ""
+                ),
+                "estatus_atencion": resultado.estatus_atencion.nombre if resultado.estatus_atencion else "",
             }
         )
     return output_datatable_json(draw, total, data)
@@ -119,7 +151,7 @@ def list_active():
     """Listado de Atenciones activas"""
     return render_template(
         "udp_atenciones/list.jinja2",
-        filtros=json.dumps({"estatus": "A"}),
+        filtros=json.dumps({}),
         titulo="Atenciones",
         estatus="A",
     )
@@ -151,6 +183,26 @@ def new(udp_persona_id):
     udp_persona = UdpPersona.query.get_or_404(udp_persona_id)
     form = UdpAtencionForm()
     if form.validate_on_submit():
+        defensor = get_defensor(form)
+        if defensor is None:
+            return render_template(
+                "udp_atenciones/new.jinja2",
+                form=form,
+                udp_persona=udp_persona,
+                distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
+                autoridad_por_defecto=current_user.autoridad,
+                defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
+            )
+        if not form.visita.data:
+            flash("Seleccione el tipo de atención.", "warning")
+            return render_template(
+                "udp_atenciones/new.jinja2",
+                form=form,
+                udp_persona=udp_persona,
+                distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
+                autoridad_por_defecto=current_user.autoridad,
+                defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
+            )
         contraparte = get_contraparte(form)
         if not contraparte:
             return render_template(
@@ -164,10 +216,11 @@ def new(udp_persona_id):
         udp_atencion = UdpAtencion(
             udp_persona_id=udp_persona.id,
             udp_tipo_tramite_id=form.udp_tipo_tramite.data,
-            usuario_id=form.defensor.data,
+            usuario_id=defensor.id,
             autoridad_id=form.autoridad.data,
             visita=form.visita.data,
             expediente=form.expediente.data,
+            fecha_siguiente_cita=(datetime.combine(form.fecha_siguiente_cita.data, time.min) if form.fecha_siguiente_cita.data else None),
             observaciones=safe_string(form.observaciones.data, save_enie=True, max_len=1024),
         )
         if not save_atencion_contraparte(udp_atencion, contraparte):
@@ -208,15 +261,30 @@ def edit(udp_atencion_id):
     """Editar Atención"""
     udp_atencion = UdpAtencion.query.get_or_404(udp_atencion_id)
     form = UdpAtencionForm()
+    configurar_estatus(form)
     if form.validate_on_submit():
+        defensor = get_defensor(form)
+        if defensor is None:
+            return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
         contraparte = get_contraparte(form)
         if not contraparte:
             return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
         udp_atencion.udp_tipo_tramite_id = form.udp_tipo_tramite.data
         udp_atencion.autoridad_id = form.autoridad.data
-        udp_atencion.usuario_id = form.defensor.data
-        udp_atencion.visita = form.visita.data
+        udp_atencion.usuario_id = defensor.id
         udp_atencion.expediente = form.expediente.data
+        udp_atencion.fecha_siguiente_cita = (
+            datetime.combine(form.fecha_siguiente_cita.data, time.min) if form.fecha_siguiente_cita.data else None
+        )
+        try:
+            estatus_id = int(form.estatus_id.data)
+        except (TypeError, ValueError):
+            estatus_id = None
+        estatus = Estatus.query.filter_by(id=estatus_id, estatus="A").first() if estatus_id is not None else None
+        if estatus is None:
+            flash("El estatus seleccionado no está disponible.", "warning")
+            return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
+        udp_atencion.estatus_id = estatus.id
         udp_atencion.observaciones = safe_string(form.observaciones.data, save_enie=True, max_len=1024)
         if not save_atencion_contraparte(udp_atencion, contraparte):
             return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
@@ -236,6 +304,8 @@ def edit(udp_atencion_id):
     if udp_atencion.contraparte:
         form.udp_contraparte.data = udp_atencion.contraparte_id
     form.expediente.data = udp_atencion.expediente
+    form.fecha_siguiente_cita.data = udp_atencion.fecha_siguiente_cita.date() if udp_atencion.fecha_siguiente_cita else None
+    form.estatus_id.data = str(udp_atencion.estatus_id) if udp_atencion.estatus_id else None
     form.observaciones.data = udp_atencion.observaciones
     return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
 

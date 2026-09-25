@@ -25,11 +25,14 @@
             {{ detail.label_value('Tipo de Trámite', udp_atencion.udp_tipo_tramite.nombre) }}
             {{ detail.label_value('Distrito', udp_atencion.autoridad.distrito.clave + ' : ' + udp_atencion.autoridad.distrito.nombre_corto if udp_atencion.autoridad and udp_atencion.autoridad.distrito else '') }}
             {{ detail.label_value('Autoridad', udp_atencion.autoridad.clave + ' : ' + udp_atencion.autoridad.descripcion_corta if udp_atencion.autoridad else '') }}
-            {{ detail.label_value('Visita', udp_atencion.visita) }}
             {% if udp_atencion.contraparte %}
                 {{ detail.label_value('Contraparte', udp_atencion.contraparte.nombre_completo, url_for('udp_personas.detail', udp_persona_id=udp_atencion.contraparte_id)) }}
             {% endif %}
             {{ detail.label_value('Expediente', udp_atencion.expediente) }}
+            {{ detail.label_value('Folio', udp_atencion.folio) }}
+            {{ detail.label_value('Tipo de atención', udp_atencion.visita) }}
+            {{ detail.label_value('Fecha de siguiente cita', udp_atencion.fecha_siguiente_cita.strftime('%Y-%m-%d') if udp_atencion.fecha_siguiente_cita else '') }}
+            {{ detail.label_value('Estatus', udp_atencion.estatus_atencion.nombre if udp_atencion.estatus_atencion else '') }}
             {{ detail.label_value('Observaciones', udp_atencion.observaciones) }}
             {{ detail.label_value('Defensor asignado', udp_atencion.usuario.email) }}
         </div>

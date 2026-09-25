@@ -1,5 +1,6 @@
 {% extends 'layouts/app.jinja2' %}
 {% import 'macros/form.jinja2' as f with context %}
+{% import 'macros/detail.jinja2' as detail %}
 {% import 'macros/topbar.jinja2' as topbar %}
 
 {% block title %}Editar Atención {{ udp_atencion.id }}{% endblock %}
@@ -17,11 +18,12 @@
     {% call f.card() %}
         {% set form_kwargs = {'udp_atencion_id': udp_atencion.id} %}
         {% call f.form_tag('udp_atenciones.edit', fid='atencion_form', **form_kwargs) %}
+            {{ detail.label_value('Folio', udp_atencion.folio) }}
+            {{ detail.label_value('Tipo de atención', udp_atencion.visita) }}
             {% call f.form_group(form.udp_tipo_tramite) %}{% endcall %}
             {% call f.form_group(form.distrito) %}{% endcall %}
             {% call f.form_group(form.autoridad) %}{% endcall %}
             {% call f.form_group(form.defensor) %}{% endcall %}
-            {% call f.form_group(form.visita) %}{% endcall %}
             {% call f.form_group(form.udp_contraparte) %}{% endcall %}
             {% call f.form_group(form.nueva_contraparte) %}{% endcall %}
             <div id="nueva-contraparte-campos" class="d-none">
@@ -35,6 +37,8 @@
                 {% call f.form_group(form.contraparte_observaciones, rows="4") %}{% endcall %}
             </div>
             {% call f.form_group(form.expediente) %}{% endcall %}
+            {% call f.form_group(form.fecha_siguiente_cita) %}{% endcall %}
+            {% call f.form_group(form.estatus_id) %}{% endcall %}
             {% call f.form_group(form.observaciones, rows="8") %}{% endcall %}
             {% call f.form_group(form.guardar) %}{% endcall %}
         {% endcall %}
@@ -144,21 +148,6 @@
                     option.text = item.text;
                     condicionSelect.appendChild(option);
                 });
-            });
-    </script>
-    <!-- Select Visita -->
-    <script>
-        const visitaSelect = document.getElementById('visita');
-        fetch("{{ url_for('udp_tipos_visitas.select_json') }}")
-            .then(response => response.json())
-            .then(data => {
-                data.results.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.text;
-                    option.text = item.text;
-                    visitaSelect.appendChild(option);
-                });
-                visitaSelect.value = {{ udp_atencion.visita | tojson }};
             });
     </script>
     <!-- Select Defensor -->

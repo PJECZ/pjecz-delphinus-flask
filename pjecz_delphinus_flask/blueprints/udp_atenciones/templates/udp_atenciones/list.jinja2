@@ -23,6 +23,10 @@
                     <th>Usuario</th>
                     <th>Autoridad</th>
                     <th>Expediente</th>
+                    <th>Folio</th>
+                    <th>Tipo atención</th>
+                    <th>Siguiente cita</th>
+                    <th>Estatus</th>
                 </tr>
             </thead>
         </table>
@@ -42,7 +46,11 @@
             { data: 'udp_tipo_tramite_nombre' },
             { data: 'usuario_email' },
             { data: 'autoridad_clave' },
-            { data: 'expediente' }
+            { data: 'expediente' },
+            { data: 'folio' },
+            { data: 'tipo_atencion' },
+            { data: 'fecha_siguiente_cita' },
+            { data: 'estatus_atencion' }
         ];
         configDT['columnDefs'] = [
             {

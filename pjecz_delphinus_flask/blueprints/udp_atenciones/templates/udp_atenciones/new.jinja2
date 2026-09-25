@@ -35,6 +35,7 @@
                 {% call f.form_group(form.contraparte_observaciones, rows="4") %}{% endcall %}
             </div>
             {% call f.form_group(form.expediente) %}{% endcall %}
+            {% call f.form_group(form.fecha_siguiente_cita) %}{% endcall %}
             {% call f.form_group(form.observaciones, rows="8") %}{% endcall %}
             {% call f.form_group(form.guardar) %}{% endcall %}
         {% endcall %}
@@ -139,7 +140,7 @@
                 });
             });
     </script>
-    <!-- Select Visita -->
+    <!-- Select tipo de atención -->
     <script>
         const visitaSelect = document.getElementById('visita');
         fetch("{{ url_for('udp_tipos_visitas.select_json') }}")

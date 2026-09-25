@@ -132,7 +132,7 @@
         <script>
             let configDTAtenciones = constructorDataTable.config();
             configDTAtenciones['ajax']['url'] = "{{ url_for('udp_atenciones.datatable_json') }}";
-            configDTAtenciones['ajax']['data'] = { 'estatus': 'A', 'udp_persona_id': {{ udp_persona.id }} };
+            configDTAtenciones['ajax']['data'] = { 'udp_persona_id': {{ udp_persona.id }} };
             configDTAtenciones['columns'] = [
                 { data: 'detalle' },
                 { data: 'udp_tipo_tramite_nombre' },
