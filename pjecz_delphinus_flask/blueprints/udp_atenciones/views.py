@@ -5,7 +5,7 @@ UDP Atenciones, vistas
 import json
 from datetime import datetime, time
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -15,6 +15,7 @@ from pjecz_delphinus_flask.blueprints.modulos.models import Modulo
 from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
 from pjecz_delphinus_flask.blueprints.udp_atenciones.forms import UdpAtencionForm
 from pjecz_delphinus_flask.blueprints.udp_atenciones.models import Estatus, UdpAtencion
+from pjecz_delphinus_flask.blueprints.udp_atenciones.pdf import generar_resumen_pdf
 from pjecz_delphinus_flask.blueprints.udp_atenciones.services import asignar_datos_iniciales
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
@@ -174,6 +175,22 @@ def detail(udp_atencion_id):
     """Detalle de una Atención"""
     udp_atencion = UdpAtencion.query.get_or_404(udp_atencion_id)
     return render_template("udp_atenciones/detail.jinja2", udp_atencion=udp_atencion)
+
+
+@udp_atenciones.route("/udp_atenciones/<int:udp_atencion_id>/resumen.pdf")
+def resumen_pdf(udp_atencion_id):
+    """Generar en memoria el resumen PDF de una atención."""
+    udp_atencion = UdpAtencion.query.get_or_404(udp_atencion_id)
+    archivo_pdf = generar_resumen_pdf(udp_atencion)
+    respuesta = send_file(
+        archivo_pdf,
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=f"resumen-atencion-{udp_atencion.id}.pdf",
+        max_age=0,
+    )
+    respuesta.headers["Cache-Control"] = "private, no-store"
+    return respuesta
 
 
 @udp_atenciones.route("/udp_atenciones/nuevo/<int:udp_persona_id>", methods=["GET", "POST"])

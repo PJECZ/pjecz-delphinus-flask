@@ -8,6 +8,7 @@
 {% block topbar_actions %}
     {% call topbar.page_buttons('Atención de ' + udp_atencion.udp_persona.nombre_completo) %}
         {{ topbar.button_previous('Persona', url_for('udp_personas.detail', udp_persona_id=udp_atencion.udp_persona_id)) }}
+        {{ topbar.button('Imprimir resumen', url_for('udp_atenciones.resumen_pdf', udp_atencion_id=udp_atencion.id), 'mdi mdi-printer') }}
         {% if current_user.can_edit('UDP ATENCIONES') %}
             {{ topbar.button_edit('Editar', url_for('udp_atenciones.edit', udp_atencion_id=udp_atencion.id)) }}
         {% endif %}
