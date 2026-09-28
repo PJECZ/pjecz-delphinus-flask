@@ -260,15 +260,50 @@ def recover(udp_persona_id):
 def select_json():
     """Proporcionar personas activas para elegir como contraparte."""
     consulta = UdpPersona.query.filter_by(estatus="A")
-    if "searchTerm" in request.args:
+
+    search_fields = (
+        ("nombres", UdpPersona.nombres),
+        ("apellido_primero", UdpPersona.apellido_primero),
+        ("apellido_segundo", UdpPersona.apellido_segundo),
+        ("curp", UdpPersona.curp),
+    )
+    search_terms = {}
+    if any(field_name in request.args for field_name, _ in search_fields):
+        search_terms = {
+            field_name: safe_string(request.args.get(field_name, ""), save_enie=True)
+            for field_name, _ in search_fields
+        }
+        search_terms = {field_name: term for field_name, term in search_terms.items() if term}
+        if not search_terms:
+            return {"results": [], "pagination": {"more": False}}
+        for field_name, column in search_fields:
+            if field_name in search_terms:
+                consulta = consulta.filter(column.contains(search_terms[field_name]))
+    elif "searchTerm" in request.args:
         search_term = safe_string(request.args.get("searchTerm", ""), save_enie=True)
         if len(search_term) >= 4:
+            search_terms = {field_name: search_term for field_name, _ in search_fields}
             consulta = consulta.filter(
                 UdpPersona.curp.contains(search_term)
                 | UdpPersona.nombres.contains(search_term)
                 | UdpPersona.apellido_primero.contains(search_term)
                 | UdpPersona.apellido_segundo.contains(search_term)
             )
+        else:
+            return {"results": [], "pagination": {"more": False}}
+    else:
+        return {"results": [], "pagination": {"more": False}}
     consulta = consulta.order_by(UdpPersona.apellido_primero, UdpPersona.apellido_segundo, UdpPersona.nombres)
-    resultados = [{"id": persona.id, "text": f"{persona.nombre_completo} - {persona.curp or 'Sin CURP'}"} for persona in consulta.all()]
+    resultados = [
+        {
+            "id": persona.id,
+            "text": f"{persona.nombre_completo} - {persona.curp or 'Sin CURP'}",
+            "nombres": persona.nombres,
+            "apellido_primero": persona.apellido_primero,
+            "apellido_segundo": persona.apellido_segundo,
+            "curp": persona.curp,
+            "search_terms": search_terms,
+        }
+        for persona in consulta.all()
+    ]
     return {"results": resultados, "pagination": {"more": False}}
