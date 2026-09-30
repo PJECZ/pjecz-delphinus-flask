@@ -110,8 +110,20 @@ def datatable_json():
     """DataTable JSON para listado de Atenciones"""
     draw, start, rows_per_page = get_datatable_parameters()
     consulta = UdpAtencion.query
+    filtro = request.form.get("filtro")
+    es_defensor = "DEFENSOR" in current_user.get_roles()
+    if filtro == "asignados" and es_defensor:
+        consulta = (
+            consulta.join(UdpAtencion.usuario)
+            .join(UdpAtencion.estatus_atencion)
+            .filter(
+                Usuario.email == current_user.email,
+                Estatus.nombre == "asignado",
+                Estatus.estatus == "A",
+            )
+        )
     if "estatus" in request.form:
-        consulta = consulta.filter_by(estatus=request.form["estatus"])
+        consulta = consulta.filter(UdpAtencion.estatus == request.form["estatus"])
     """ else:
         consulta = consulta.filter_by(estatus="A") """
     if "udp_persona_id" in request.form:
@@ -121,7 +133,10 @@ def datatable_json():
                 UdpAtencion.contraparte_id == request.form["udp_persona_id"],
             )
         )
-    registros = consulta.order_by(UdpAtencion.id.desc()).offset(start).limit(rows_per_page).all()
+    ordenamiento = [UdpAtencion.id.desc()]
+    if filtro == "asignados" and es_defensor:
+        ordenamiento = [UdpAtencion.fecha.desc().nullslast(), UdpAtencion.id.desc()]
+    registros = consulta.order_by(*ordenamiento).offset(start).limit(rows_per_page).all()
     total = consulta.count()
     data = []
     for resultado in registros:
@@ -150,11 +165,15 @@ def datatable_json():
 @udp_atenciones.route("/udp_atenciones")
 def list_active():
     """Listado de Atenciones activas"""
+    filtro = request.args.get("filtro")
+    if filtro != "asignados" or "DEFENSOR" not in current_user.get_roles():
+        filtro = None
     return render_template(
         "udp_atenciones/list.jinja2",
-        filtros=json.dumps({}),
+        filtros=json.dumps({"filtro": filtro} if filtro else {}),
         titulo="Atenciones",
         estatus="A",
+        filtro=filtro,
     )
 
 
