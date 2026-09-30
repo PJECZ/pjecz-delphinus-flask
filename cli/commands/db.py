@@ -36,8 +36,6 @@ from pjecz_delphinus_flask.config.extensions import database, pwd_context
 from pjecz_delphinus_flask.lib.pwgen import generar_contrasena
 from pjecz_delphinus_flask.lib.safe_string import safe_clave, safe_email, safe_string, safe_int
 
-
-
 # Rutas a los archivos CSV
 AUTORIDADES_CSV = "seed/autoridades.csv"
 DISTRITOS_CSV = "seed/distritos.csv"
@@ -496,6 +494,7 @@ def alimentar_estatus():
             contador += 1
     console.print(f"[green]{contador} estatus alimentados.")
 
+
 def obtener_o_crear_udp_sexo(nombre: str) -> UdpSexo:
     """Obtener un UdpSexo por nombre, o crearlo si no existe"""
     nombre = safe_string(nombre, save_enie=True)
@@ -561,18 +560,17 @@ def alimentar_udp_personas():
         rows = csv.DictReader(puntero)
         for row in rows:
             udp_sexo = obtener_o_crear_udp_sexo(row["SEXO"])
-            udp_sexo_contraparte = obtener_o_crear_udp_sexo('ND') 
+            udp_sexo_contraparte = obtener_o_crear_udp_sexo("ND")
             udp_tipo_condicion = obtener_o_crear_udp_tipo_condicion(row["CONDICIÓN"])
-            udp_tipo_condicion_contraparte = obtener_o_crear_udp_tipo_condicion('NA')
+            udp_tipo_condicion_contraparte = obtener_o_crear_udp_tipo_condicion("NA")
             nombres, apellido_primero, apellido_segundo = partir_nombre_completo(row["NOMBRE_USUARIO"])
             udp_persona = obtener_o_crear_udp_persona(
                 nombre_completo=row["NOMBRE_USUARIO"],
                 udp_sexo=udp_sexo,
                 udp_tipo_condicion=udp_tipo_condicion,
                 nacimiento_fecha=convertir_fecha(row["FECH_NAC_USUARIO"]),
-                
             )
-            udp_persona_contraparte= obtener_o_crear_udp_persona(
+            udp_persona_contraparte = obtener_o_crear_udp_persona(
                 nombre_completo=row["NOMBRE_CONTRAPARTE"],
                 udp_sexo=udp_sexo_contraparte,
                 udp_tipo_condicion=udp_tipo_condicion_contraparte,
@@ -580,9 +578,13 @@ def alimentar_udp_personas():
             )
             UdpIngreso(
                 udp_persona=udp_persona,
-                ocupacion=safe_string(row["OCUPACIÓN"]) if "OCUPACIÓN" in row else 'ND',
+                ocupacion=safe_string(row["OCUPACIÓN"]) if "OCUPACIÓN" in row else "ND",
                 ingresos=safe_int(row["INGRESOS"]) if "INGRESOS" in row else 0,
-                observaciones=safe_string(row["OBSERVACIONES_INGRESO"], max_len=2048, save_enie=True, to_uppercase=False) if "OBSERVACIONES_INGRESO" in row else 'ND',
+                observaciones=(
+                    safe_string(row["OBSERVACIONES_INGRESO"], max_len=2048, save_enie=True, to_uppercase=False)
+                    if "OBSERVACIONES_INGRESO" in row
+                    else "ND"
+                ),
             ).save()
             UdpAtencion(
                 udp_persona=udp_persona,
@@ -596,29 +598,32 @@ def alimentar_udp_personas():
                 como_se_entero=row["COMO_SE_ENTERO"] if "COMO_SE_ENTERO" in row else None,
                 atendio=row["ATENDIO"] if "ATENDIO" in row else None,
                 hora_salida=convertir_fecha(row["HORA_SALIDA"]) if "HORA_SALIDA" in row else None,
-                observaciones_aj= safe_string(row["OBSERVACIONES_AJ"], max_len=2040, save_enie=True, to_uppercase=False) if "OBSERVACIONES_AJ" in row else None,
+                observaciones_aj=(
+                    safe_string(row["OBSERVACIONES_AJ"], max_len=2040, save_enie=True, to_uppercase=False)
+                    if "OBSERVACIONES_AJ" in row
+                    else None
+                ),
                 fecha_hora_aj=convertir_fecha(row["FECHA_HORA_AJ"]) if "FECHA_HORA_AJ" in row else None,
                 canalizado=row["CANALIZADO"] if "CANALIZADO" in row else None,
                 fecha_canalizado=convertir_fecha(row["FECHA_CANALIZADO"]) if "FECHA_CANALIZADO" in row else None,
-                estatus_id=3
+                estatus_id=3,
             ).save()
-            municipio_id=66
+            municipio_id = 66
             UdpDomicilio(
                 udp_persona=udp_persona,
                 municipio_id=municipio_id,
-                calle=safe_string(row["CALLE"]) if "CALLE" in row else '',
-                num_exterior=safe_string(row["NUMERO_EXTERIOR"]) if "NUMERO_EXTERIOR" in row else '',
-                num_interior=safe_string(row["NUMERO_INTERIOR"]) if "NUMERO_INTERIOR" in row else '',
-                colonia=safe_string(row["COLONIA"]) if "COLONIA" in row else '',
+                calle=safe_string(row["CALLE"]) if "CALLE" in row else "",
+                num_exterior=safe_string(row["NUMERO_EXTERIOR"]) if "NUMERO_EXTERIOR" in row else "",
+                num_interior=safe_string(row["NUMERO_INTERIOR"]) if "NUMERO_INTERIOR" in row else "",
+                colonia=safe_string(row["COLONIA"]) if "COLONIA" in row else "",
                 codigo_postal=safe_string(row["CODIGO_POSTAL"]) if "CODIGO_POSTAL" in row else 0,
-                              
             ).save()
             contador += 1
         """ for row in rows:
             console.print(f"row ={row}") """
-        
+
     console.print(f"[green]{contador} udp_personas alimentados.")
-    
+
 
 def obtener_o_crear_udp_tipo_tramite(nombre: str) -> UdpTipoTramite:
     """Obtener un UdpTipoTramite por nombre, o crearlo si no existe"""
@@ -629,7 +634,9 @@ def obtener_o_crear_udp_tipo_tramite(nombre: str) -> UdpTipoTramite:
     return udp_tipo_tramite
 
 
-def obtener_o_crear_udp_persona(nombre_completo: str, udp_sexo: UdpSexo, udp_tipo_condicion: UdpTipoCondicion, nacimiento_fecha) -> UdpPersona:
+def obtener_o_crear_udp_persona(
+    nombre_completo: str, udp_sexo: UdpSexo, udp_tipo_condicion: UdpTipoCondicion, nacimiento_fecha
+) -> UdpPersona:
     """Obtener un UdpPersona por su nombre completo, o crearlo si no existe"""
     nombres, apellido_primero, apellido_segundo = partir_nombre_completo(nombre_completo)
     udp_persona = UdpPersona.query.filter_by(
@@ -667,9 +674,12 @@ def obtener_o_crear_usuario_por_nombre(nombre_completo: str, autoridad: Autorida
             contrasena=pwd_context.hash(generar_contrasena()),
         ).save()
     return usuario
+
+
 def obtener_municipio(nombre: str) -> Municipio:
     """Obtener un Municipio por su nombre"""
     return Municipio.query.filter_by(nombre=nombre).first()
+
 
 def alimentar_atenciones():
     """Alimentar UDP Personas Atenciones"""
@@ -716,13 +726,18 @@ def alimentar_atenciones():
                 como_se_entero=row["COMO_SE_ENTERO"] if "COMO_SE_ENTERO" in row else None,
                 atendio=row["ATENDIO"] if "ATENDIO" in row else None,
                 hora_salida=convertir_fecha(row["HORA_SALIDA"]) if "HORA_SALIDA" in row else None,
-                observaciones_aj= safe_string(row["OBSERVACIONES_AJ"], max_len=2048, save_enie=True, to_uppercase=False) if "OBSERVACIONES_AJ" in row else None,
+                observaciones_aj=(
+                    safe_string(row["OBSERVACIONES_AJ"], max_len=2048, save_enie=True, to_uppercase=False)
+                    if "OBSERVACIONES_AJ" in row
+                    else None
+                ),
                 fecha_hora_aj=convertir_fecha(row["FECHA_HORA_AJ"]) if "FECHA_HORA_AJ" in row else None,
                 canalizado=row["CANALIZADO"] if "CANALIZADO" in row else None,
                 fecha_canalizado=convertir_fecha(row["FECHA_CANALIZADO"]) if "FECHA_CANALIZADO" in row else None,
             ).save()
             contador += 1
     console.print(f"[green]{contador} atenciones alimentadas.")
+
 
 def alimentar_estados():
     """Alimentar Estados"""
@@ -1123,9 +1138,10 @@ def alimentar():
     alimentar_udp_tipos_tramites()
     alimentar_udp_tipos_visitas()
     alimentar_estatus()
-    alimentar_udp_personas()    
-    #alimentar_atenciones()
+    alimentar_udp_personas()
+    # alimentar_atenciones()
     console.print("[green]La base de datos se ha alimentado correctamente.")
+
 
 def eliminar_personas():
     """Eliminar todas las personas de la base de datos"""
@@ -1133,11 +1149,14 @@ def eliminar_personas():
         database.session.delete(persona)
     database.session.commit()
 
+
 @db.command()
 def alimentar_personas():
     """Alimentar la base de datos con los datos de personas en el archivo CSV correspondiente"""
-    #eliminar_personas()
+    # eliminar_personas()
     alimentar_udp_personas()
+
+
 @db.command()
 def reiniciar():
     """Reiniciar la base de datos (inicializar y alimentar)"""
@@ -1159,4 +1178,3 @@ def respaldar():
     respaldar_udp_tipos_condiciones()
     respaldar_udp_tipos_tramites()
     respaldar_udp_tipos_visitas()
-    
