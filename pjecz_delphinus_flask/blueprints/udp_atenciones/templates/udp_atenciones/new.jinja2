@@ -5,397 +5,317 @@
 {% block title %}Nueva Atención para {{ udp_persona.nombre_completo }}{% endblock %}
 
 {% block custom_head %}
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="https://storage.googleapis.com/pjecz-informatica/static/css/select2.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://storage.googleapis.com/pjecz-informatica/static/css/select2.css" rel="stylesheet" />
 {% endblock %}
 
 {% block topbar_actions %}
-    {{ topbar.page('Nueva Atención para ' + udp_persona.nombre_completo) }}
+{{ topbar.page('Nueva Atención para ' + udp_persona.nombre_completo) }}
 {% endblock %}
 
 {% block content %}
-    {% call f.card() %}
-        {% set form_kwargs = {'udp_persona_id': udp_persona.id} %}
-        {% call f.form_tag('udp_atenciones.new', fid='atencion_form', **form_kwargs) %}
-            {% call f.form_group(form.udp_tipo_tramite) %}{% endcall %}
-            {% call f.form_group(form.distrito) %}{% endcall %}
-            {% call f.form_group(form.autoridad) %}{% endcall %}
-            {% call f.form_group(form.defensor) %}{% endcall %}
-            {% call f.form_group(form.visita) %}{% endcall %}
-            <section id="contraparte-busqueda-campos" class="mb-3 rounded border border-start border-4 border-primary-subtle bg-body-tertiary p-3 p-md-4" aria-labelledby="contraparte-busqueda-titulo">
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <span class="mdi mdi-magnify text-primary fs-4" aria-hidden="true"></span>
-                    <h2 id="contraparte-busqueda-titulo" class="h5 mb-0">Buscar contraparte existente</h2>
-                </div>
-                <div class="row g-3">
-                    <div class="col-12">
-                        {% call f.form_group(form.busqueda_nombres) %}{% endcall %}
-                    </div>
-                    <div class="col-12 col-md-6">
-                        {% call f.form_group(form.busqueda_apellido_primero) %}{% endcall %}
-                    </div>
-                    <div class="col-12 col-md-6">
-                        {% call f.form_group(form.busqueda_apellido_segundo) %}{% endcall %}
-                    </div>
-                    <div class="col-12">
-                        {% call f.form_group(form.busqueda_curp) %}{% endcall %}
-                    </div>
-                    <div class="col-12">
-                        <button id="buscar-contraparte" class="btn btn-primary" type="button" aria-busy="false">
-                            <span id="buscar-contraparte-icono" class="mdi mdi-magnify me-1" aria-hidden="true"></span>
-                            <span id="buscar-contraparte-spinner" class="mdi mdi-loading mdi-spin me-1 d-none" aria-hidden="true"></span>
-                            <span id="buscar-contraparte-etiqueta">Buscar contraparte</span>
-                        </button>
-                        <div id="contraparte-search-feedback" class="alert alert-warning mt-3 mb-0 py-2 d-none" role="status" aria-live="polite"></div>
-                    </div>
-                    <div class="col-12">
-                        {% call f.form_group(form.udp_contraparte) %}{% endcall %}
-                    </div>
-                </div>
-            </section>
-            <div id="contraparte-alta-opcion" class="border-top mb-3 pt-3">
-                <p id="contraparte-alta-ayuda" class="text-body-secondary mb-2">¿No encuentras a la persona?</p>
-                <button id="mostrar-nueva-contraparte" class="btn btn-outline-success" type="button" aria-expanded="false" aria-controls="nueva-contraparte-campos">
-                    <span id="modo-contraparte-icono" class="mdi mdi-account-plus-outline me-1" aria-hidden="true"></span>
-                    <span id="modo-contraparte-etiqueta">Registrar nueva contraparte</span>
-                </button>
-                {{ form.nueva_contraparte(class="d-none") }}
-            </div>
-            <section id="nueva-contraparte-campos" class="d-none mb-3 rounded border border-start border-4 border-success-subtle bg-body-tertiary p-3 p-md-4" aria-labelledby="nueva-contraparte-titulo">
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <span class="mdi mdi-account-plus-outline text-success fs-4" aria-hidden="true"></span>
-                    <h2 id="nueva-contraparte-titulo" class="h5 mb-0">Nueva contraparte</h2>
-                </div>
-                <div class="row g-3">
-                    <div class="col-12">
-                        {% call f.form_group(form.contraparte_nombres) %}{% endcall %}
-                    </div>
-                    <div class="col-12 col-md-6">
-                        {% call f.form_group(form.contraparte_apellido_primero) %}{% endcall %}
-                    </div>
-                    <div class="col-12 col-md-6">
-                        {% call f.form_group(form.contraparte_apellido_segundo) %}{% endcall %}
-                    </div>
-                    <div class="col-12 col-md-6">
-                        {% call f.form_group(form.contraparte_nacimiento_fecha) %}{% endcall %}
-                    </div>
-                    <div class="col-12 col-md-6">
-                        {% call f.form_group(form.contraparte_udp_sexo) %}{% endcall %}
-                    </div>
-                    <div class="col-12 col-md-6">
-                        {% call f.form_group(form.contraparte_udp_tipo_condicion) %}{% endcall %}
-                    </div>
-                    <div class="col-12 col-md-6">
-                        {% call f.form_group(form.contraparte_curp) %}{% endcall %}
-                    </div>
-                    <div class="col-12">
-                        {% call f.form_group(form.contraparte_observaciones, rows="4") %}{% endcall %}
-                    </div>
-                </div>
-            </section>
-            {% call f.form_group(form.expediente) %}{% endcall %}
-            {% call f.form_group(form.fecha_siguiente_cita) %}{% endcall %}
-            {% call f.form_group(form.observaciones, rows="8") %}{% endcall %}
-            {% call f.form_group(form.guardar) %}{% endcall %}
-        {% endcall %}
-    {% endcall %}
+{% include 'udp_atenciones/_form.jinja2' %}
 {% endblock %}
 
 {% block custom_javascript %}
-    <!-- Select udp_tipo_tramite -->
-    <script>
-        const udpTipoTramiteSelect = document.getElementById('udp_tipo_tramite');
-        // Cargar las opciones del select udp_tipo_tramite
-        fetch("{{ url_for('udp_tipos_tramites.select_json') }}")
+<!-- Select udp_tipo_tramite -->
+<script>
+    const udpTipoTramiteSelect = document.getElementById('udp_tipo_tramite');
+    // Cargar las opciones del select udp_tipo_tramite
+    fetch("{{ url_for('udp_tipos_tramites.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                udpTipoTramiteSelect.appendChild(option);
+            });
+        });
+</script>
+<!-- Select Distrito-Autoridad -->
+<script>
+    const distritoSelect = document.getElementById('distrito');
+    const autoridadSelect = document.getElementById('autoridad');
+    // Cargar las opciones del select distrito
+    fetch("{{ url_for('distritos.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                distritoSelect.appendChild(option);
+            });
+            distritoSelect.value = {{ distrito_por_defecto.id }
+        }; // Seleccionar el distrito por defecto
+    distritoSelect.dispatchEvent(new Event('change'));
+            });
+    // Cargar las opciones del select autoridad, si el distrito cambia
+    distritoSelect.addEventListener('change', () => {
+        fetch(`{{ url_for('autoridades.select_json') }}?distrito_id=${distritoSelect.value}`)
             .then(response => response.json())
             .then(data => {
+                autoridadSelect.innerHTML = '';
                 data.results.forEach(item => {
                     const option = document.createElement('option');
                     option.value = item.id;
                     option.text = item.text;
-                    udpTipoTramiteSelect.appendChild(option);
+                    autoridadSelect.appendChild(option);
                 });
-            });
-    </script>
-    <!-- Select Distrito-Autoridad -->
-    <script>
-        const distritoSelect = document.getElementById('distrito');
-        const autoridadSelect = document.getElementById('autoridad');
-        // Cargar las opciones del select distrito
-        fetch("{{ url_for('distritos.select_json') }}")
-            .then(response => response.json())
-            .then(data => {
-                data.results.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.text = item.text;
-                    distritoSelect.appendChild(option);
-                });
-                distritoSelect.value = {{ distrito_por_defecto.id }}; // Seleccionar el distrito por defecto
-                distritoSelect.dispatchEvent(new Event('change'));
-            });
-        // Cargar las opciones del select autoridad, si el distrito cambia
-        distritoSelect.addEventListener('change', () => {
-            fetch(`{{ url_for('autoridades.select_json') }}?distrito_id=${distritoSelect.value}`)
-                .then(response => response.json())
-                .then(data => {
-                    autoridadSelect.innerHTML = '';
-                    data.results.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.id;
-                        option.text = item.text;
-                        autoridadSelect.appendChild(option);
-                    });
-                    if (distritoSelect.value == {{ distrito_por_defecto.id }}) {
-                        autoridadSelect.value = {{ autoridad_por_defecto.id }}; // Seleccionar la autoridad por defecto
-                    }
+                if (distritoSelect.value == {{ distrito_por_defecto.id }
+            }) {
+            autoridadSelect.value = {{ autoridad_por_defecto.id }
+        }; // Seleccionar la autoridad por defecto
+    }
                 });
         });
-    </script>
-    <!-- Select Contraparte -->
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script>
-        const nuevaContraparte = document.getElementById('nueva_contraparte');
-        const nuevaContraparteCampos = document.getElementById('nueva-contraparte-campos');
-        const contraparteBusquedaCampos = document.getElementById('contraparte-busqueda-campos');
-        const mostrarNuevaContraparte = document.getElementById('mostrar-nueva-contraparte');
-        const contraparteAltaAyuda = document.getElementById('contraparte-alta-ayuda');
-        const modoContraparteEtiqueta = document.getElementById('modo-contraparte-etiqueta');
-        const modoContraparteIcono = document.getElementById('modo-contraparte-icono');
-        const contraparteSelect = $('#udp_contraparte');
-        const contraparteSearchInputs = [
-            document.getElementById('busqueda_nombres'),
-            document.getElementById('busqueda_apellido_primero'),
-            document.getElementById('busqueda_apellido_segundo'),
-            document.getElementById('busqueda_curp')
-        ];
-        const buscarContraparte = document.getElementById('buscar-contraparte');
-        const buscarContraparteEtiqueta = document.getElementById('buscar-contraparte-etiqueta');
-        const buscarContraparteIcono = document.getElementById('buscar-contraparte-icono');
-        const buscarContraparteSpinner = document.getElementById('buscar-contraparte-spinner');
-        const contraparteSearchFeedback = document.getElementById('contraparte-search-feedback');
-        const contraparteSearchUrl = "{{ url_for('udp_personas.select_json') }}";
-        let contraparteSelectOpen = false;
-        let contraparteOpenFromSearchButton = false;
+</script>
+<!-- Select Contraparte -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    const nuevaContraparte = document.getElementById('nueva_contraparte');
+    const nuevaContraparteCampos = document.getElementById('nueva-contraparte-campos');
+    const contraparteBusquedaCampos = document.getElementById('contraparte-busqueda-campos');
+    const mostrarNuevaContraparte = document.getElementById('mostrar-nueva-contraparte');
+    const contraparteAltaAyuda = document.getElementById('contraparte-alta-ayuda');
+    const modoContraparteEtiqueta = document.getElementById('modo-contraparte-etiqueta');
+    const modoContraparteIcono = document.getElementById('modo-contraparte-icono');
+    const contraparteSelect = $('#udp_contraparte');
+    const contraparteSearchInputs = [
+        document.getElementById('busqueda_nombres'),
+        document.getElementById('busqueda_apellido_primero'),
+        document.getElementById('busqueda_apellido_segundo'),
+        document.getElementById('busqueda_curp')
+    ];
+    const buscarContraparte = document.getElementById('buscar-contraparte');
+    const buscarContraparteEtiqueta = document.getElementById('buscar-contraparte-etiqueta');
+    const buscarContraparteIcono = document.getElementById('buscar-contraparte-icono');
+    const buscarContraparteSpinner = document.getElementById('buscar-contraparte-spinner');
+    const contraparteSearchFeedback = document.getElementById('contraparte-search-feedback');
+    const contraparteSearchUrl = "{{ url_for('udp_personas.select_json') }}";
+    let contraparteSelectOpen = false;
+    let contraparteOpenFromSearchButton = false;
 
-        function setContraparteSearchLoading(isLoading) {
-            buscarContraparte.disabled = isLoading;
-            buscarContraparte.setAttribute('aria-busy', String(isLoading));
-            buscarContraparteEtiqueta.textContent = isLoading ? 'Buscando...' : 'Buscar contraparte';
-            buscarContraparteIcono.classList.toggle('d-none', isLoading);
-            buscarContraparteSpinner.classList.toggle('d-none', !isLoading);
+    function setContraparteSearchLoading(isLoading) {
+        buscarContraparte.disabled = isLoading;
+        buscarContraparte.setAttribute('aria-busy', String(isLoading));
+        buscarContraparteEtiqueta.textContent = isLoading ? 'Buscando...' : 'Buscar contraparte';
+        buscarContraparteIcono.classList.toggle('d-none', isLoading);
+        buscarContraparteSpinner.classList.toggle('d-none', !isLoading);
+    }
+
+    function isContraparteSearchRequest(settings) {
+        const requestUrl = new URL(settings.url, window.location.href);
+        const searchUrl = new URL(contraparteSearchUrl, window.location.href);
+        return requestUrl.pathname === searchUrl.pathname;
+    }
+
+    function actualizarFormularioContraparte() {
+        if (nuevaContraparte.checked && contraparteSelectOpen) {
+            contraparteSelect.select2('close');
         }
-
-        function isContraparteSearchRequest(settings) {
-            const requestUrl = new URL(settings.url, window.location.href);
-            const searchUrl = new URL(contraparteSearchUrl, window.location.href);
-            return requestUrl.pathname === searchUrl.pathname;
-        }
-
-        function actualizarFormularioContraparte() {
-            if (nuevaContraparte.checked && contraparteSelectOpen) {
-                contraparteSelect.select2('close');
-            }
-            nuevaContraparteCampos.classList.toggle('d-none', !nuevaContraparte.checked);
-            contraparteBusquedaCampos.classList.toggle('d-none', nuevaContraparte.checked);
-            mostrarNuevaContraparte.setAttribute('aria-expanded', String(nuevaContraparte.checked));
-            mostrarNuevaContraparte.classList.toggle('btn-outline-success', !nuevaContraparte.checked);
-            mostrarNuevaContraparte.classList.toggle('btn-outline-secondary', nuevaContraparte.checked);
-            modoContraparteEtiqueta.textContent = nuevaContraparte.checked ? 'Volver a buscar' : 'Registrar nueva contraparte';
-            modoContraparteIcono.classList.toggle('mdi-account-plus-outline', !nuevaContraparte.checked);
-            modoContraparteIcono.classList.toggle('mdi-arrow-left', nuevaContraparte.checked);
-            contraparteAltaAyuda.textContent = nuevaContraparte.checked
-                ? '¿Quieres elegir una contraparte existente?'
-                : '¿No encuentras a la persona?';
-            contraparteSelect.prop('disabled', nuevaContraparte.checked);
-            contraparteSearchInputs.forEach(input => {
-                input.disabled = nuevaContraparte.checked;
-            });
-        }
-
-        function cambiarModoContraparte(registrarNueva) {
-            nuevaContraparte.checked = registrarNueva;
-            nuevaContraparte.dispatchEvent(new Event('change', {bubbles: true}));
-            if (registrarNueva) {
-                document.getElementById('contraparte_nombres').focus();
-                return;
-            }
-            mostrarNuevaContraparte.focus();
-        }
-
-        function normalizarTextoHighlight(texto) {
-            return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
-        }
-
-        function agregarTextoConHighlight(elemento, texto, criterio) {
-            const textoNormalizado = normalizarTextoHighlight(texto);
-            const criterioNormalizado = normalizarTextoHighlight(criterio.trim());
-            if (!criterioNormalizado) {
-                elemento.append(document.createTextNode(texto));
-                return;
-            }
-
-            let posicion = 0;
-            let inicioCoincidencia = textoNormalizado.indexOf(criterioNormalizado, posicion);
-            while (inicioCoincidencia !== -1) {
-                elemento.append(document.createTextNode(texto.slice(posicion, inicioCoincidencia)));
-                const coincidencia = document.createElement('strong');
-                coincidencia.textContent = texto.slice(inicioCoincidencia, inicioCoincidencia + criterioNormalizado.length);
-                elemento.append(coincidencia);
-                posicion = inicioCoincidencia + criterioNormalizado.length;
-                inicioCoincidencia = textoNormalizado.indexOf(criterioNormalizado, posicion);
-            }
-            elemento.append(document.createTextNode(texto.slice(posicion)));
-        }
-
-        function formatContraparteResult(resultado) {
-            if (!resultado.id) {
-                return resultado.text;
-            }
-
-            const criterios = resultado.search_terms || {};
-            const nombreCompleto = document.createElement('span');
-            const camposNombre = [
-                [resultado.apellido_primero, criterios.apellido_primero || ''],
-                [resultado.apellido_segundo, criterios.apellido_segundo || ''],
-                [resultado.nombres, criterios.nombres || '']
-            ].filter(([valor]) => valor);
-            camposNombre.forEach(([valor, criterio], indice) => {
-                if (indice > 0) {
-                    nombreCompleto.append(document.createTextNode(' '));
-                }
-                agregarTextoConHighlight(nombreCompleto, valor, criterio);
-            });
-
-            const resultadoElement = document.createElement('span');
-            resultadoElement.append(nombreCompleto, document.createTextNode(' - '));
-            agregarTextoConHighlight(resultadoElement, resultado.curp || 'Sin CURP', criterios.curp || '');
-            return $(resultadoElement);
-        }
-
-        function ejecutarBusquedaContraparte() {
-            if (buscarContraparte.disabled) {
-                return;
-            }
-            if (!contraparteSearchInputs.some(input => input.value.trim())) {
-                contraparteSearchFeedback.textContent = 'Ingresa al menos un criterio para buscar.';
-                contraparteSearchFeedback.classList.remove('d-none');
-                contraparteSearchInputs.find(input => input.value.trim() === '')?.focus();
-                return;
-            }
-
-            contraparteSearchFeedback.textContent = '';
-            contraparteSearchFeedback.classList.add('d-none');
-            contraparteOpenFromSearchButton = true;
-            if (contraparteSelectOpen) {
-                contraparteSelect.select2('close');
-            }
-            contraparteSelect.select2('open');
-            contraparteOpenFromSearchButton = false;
-        }
-
-        contraparteSelect.select2({
-            placeholder: 'Seleccionar contraparte',
-            allowClear: true,
-            minimumInputLength: 0,
-            minimumResultsForSearch: Infinity,
-            templateResult: formatContraparteResult,
-            ajax: {
-                url: "{{ url_for('udp_personas.select_json') }}",
-                dataType: 'json',
-                data: () => ({
-                    nombres: contraparteSearchInputs[0].value,
-                    apellido_primero: contraparteSearchInputs[1].value,
-                    apellido_segundo: contraparteSearchInputs[2].value,
-                    curp: contraparteSearchInputs[3].value
-                })
-            }
+        nuevaContraparteCampos.classList.toggle('d-none', !nuevaContraparte.checked);
+        contraparteBusquedaCampos.classList.toggle('d-none', nuevaContraparte.checked);
+        mostrarNuevaContraparte.setAttribute('aria-expanded', String(nuevaContraparte.checked));
+        mostrarNuevaContraparte.classList.toggle('btn-outline-success', !nuevaContraparte.checked);
+        mostrarNuevaContraparte.classList.toggle('btn-outline-secondary', nuevaContraparte.checked);
+        modoContraparteEtiqueta.textContent = nuevaContraparte.checked ? 'Volver a buscar' : 'Registrar nueva contraparte';
+        modoContraparteIcono.classList.toggle('mdi-account-plus-outline', !nuevaContraparte.checked);
+        modoContraparteIcono.classList.toggle('mdi-arrow-left', nuevaContraparte.checked);
+        contraparteAltaAyuda.textContent = nuevaContraparte.checked
+            ? '¿Quieres elegir una contraparte existente?'
+            : '¿No encuentras a la persona?';
+        contraparteSelect.prop('disabled', nuevaContraparte.checked);
+        contraparteSearchInputs.forEach(input => {
+            input.disabled = nuevaContraparte.checked;
         });
-        contraparteSelect.on('select2:opening', event => {
-            if (!contraparteOpenFromSearchButton) {
+    }
+
+    function cambiarModoContraparte(registrarNueva) {
+        nuevaContraparte.checked = registrarNueva;
+        nuevaContraparte.dispatchEvent(new Event('change', { bubbles: true }));
+        if (registrarNueva) {
+            document.getElementById('contraparte_nombres').focus();
+            return;
+        }
+        mostrarNuevaContraparte.focus();
+    }
+
+    function normalizarTextoHighlight(texto) {
+        return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    }
+
+    function agregarTextoConHighlight(elemento, texto, criterio) {
+        const textoNormalizado = normalizarTextoHighlight(texto);
+        const criterioNormalizado = normalizarTextoHighlight(criterio.trim());
+        if (!criterioNormalizado) {
+            elemento.append(document.createTextNode(texto));
+            return;
+        }
+
+        let posicion = 0;
+        let inicioCoincidencia = textoNormalizado.indexOf(criterioNormalizado, posicion);
+        while (inicioCoincidencia !== -1) {
+            elemento.append(document.createTextNode(texto.slice(posicion, inicioCoincidencia)));
+            const coincidencia = document.createElement('strong');
+            coincidencia.textContent = texto.slice(inicioCoincidencia, inicioCoincidencia + criterioNormalizado.length);
+            elemento.append(coincidencia);
+            posicion = inicioCoincidencia + criterioNormalizado.length;
+            inicioCoincidencia = textoNormalizado.indexOf(criterioNormalizado, posicion);
+        }
+        elemento.append(document.createTextNode(texto.slice(posicion)));
+    }
+
+    function formatContraparteResult(resultado) {
+        if (!resultado.id) {
+            return resultado.text;
+        }
+
+        const criterios = resultado.search_terms || {};
+        const nombreCompleto = document.createElement('span');
+        const camposNombre = [
+            [resultado.apellido_primero, criterios.apellido_primero || ''],
+            [resultado.apellido_segundo, criterios.apellido_segundo || ''],
+            [resultado.nombres, criterios.nombres || '']
+        ].filter(([valor]) => valor);
+        camposNombre.forEach(([valor, criterio], indice) => {
+            if (indice > 0) {
+                nombreCompleto.append(document.createTextNode(' '));
+            }
+            agregarTextoConHighlight(nombreCompleto, valor, criterio);
+        });
+
+        const resultadoElement = document.createElement('span');
+        resultadoElement.append(nombreCompleto, document.createTextNode(' - '));
+        agregarTextoConHighlight(resultadoElement, resultado.curp || 'Sin CURP', criterios.curp || '');
+        return $(resultadoElement);
+    }
+
+    function ejecutarBusquedaContraparte() {
+        if (buscarContraparte.disabled) {
+            return;
+        }
+        if (!contraparteSearchInputs.some(input => input.value.trim())) {
+            contraparteSearchFeedback.textContent = 'Ingresa al menos un criterio para buscar.';
+            contraparteSearchFeedback.classList.remove('d-none');
+            contraparteSearchInputs.find(input => input.value.trim() === '')?.focus();
+            return;
+        }
+
+        contraparteSearchFeedback.textContent = '';
+        contraparteSearchFeedback.classList.add('d-none');
+        contraparteOpenFromSearchButton = true;
+        if (contraparteSelectOpen) {
+            contraparteSelect.select2('close');
+        }
+        contraparteSelect.select2('open');
+        contraparteOpenFromSearchButton = false;
+    }
+
+    contraparteSelect.select2({
+        placeholder: 'Seleccionar contraparte',
+        allowClear: true,
+        minimumInputLength: 0,
+        minimumResultsForSearch: Infinity,
+        templateResult: formatContraparteResult,
+        ajax: {
+            url: "{{ url_for('udp_personas.select_json') }}",
+            dataType: 'json',
+            data: () => ({
+                nombres: contraparteSearchInputs[0].value,
+                apellido_primero: contraparteSearchInputs[1].value,
+                apellido_segundo: contraparteSearchInputs[2].value,
+                curp: contraparteSearchInputs[3].value
+            })
+        }
+    });
+    contraparteSelect.on('select2:opening', event => {
+        if (!contraparteOpenFromSearchButton) {
+            event.preventDefault();
+        }
+    });
+    contraparteSelect.on('select2:open', () => {
+        contraparteSelectOpen = true;
+    });
+    contraparteSelect.on('select2:close', () => {
+        contraparteSelectOpen = false;
+    });
+    contraparteSearchInputs.forEach(input => {
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
                 event.preventDefault();
             }
         });
-        contraparteSelect.on('select2:open', () => {
-            contraparteSelectOpen = true;
-        });
-        contraparteSelect.on('select2:close', () => {
-            contraparteSelectOpen = false;
-        });
-        contraparteSearchInputs.forEach(input => {
-            input.addEventListener('keydown', event => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                }
+    });
+    buscarContraparte.addEventListener('click', ejecutarBusquedaContraparte);
+    $(document).on('ajaxSend.contraparteSearch', (event, jqXHR, settings) => {
+        if (isContraparteSearchRequest(settings)) {
+            setContraparteSearchLoading(true);
+        }
+    });
+    $(document).on('ajaxComplete.contraparteSearch', (event, jqXHR, settings) => {
+        if (isContraparteSearchRequest(settings)) {
+            setContraparteSearchLoading(false);
+        }
+    });
+    nuevaContraparte.addEventListener('change', actualizarFormularioContraparte);
+    mostrarNuevaContraparte.addEventListener('click', () => cambiarModoContraparte(!nuevaContraparte.checked));
+    actualizarFormularioContraparte();
+    fetch("{{ url_for('udp_sexos.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            const sexoSelect = document.getElementById('contraparte_udp_sexo');
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                sexoSelect.appendChild(option);
             });
         });
-        buscarContraparte.addEventListener('click', ejecutarBusquedaContraparte);
-        $(document).on('ajaxSend.contraparteSearch', (event, jqXHR, settings) => {
-            if (isContraparteSearchRequest(settings)) {
-                setContraparteSearchLoading(true);
-            }
+    fetch("{{ url_for('udp_tipos_condiciones.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            const condicionSelect = document.getElementById('contraparte_udp_tipo_condicion');
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                condicionSelect.appendChild(option);
+            });
         });
-        $(document).on('ajaxComplete.contraparteSearch', (event, jqXHR, settings) => {
-            if (isContraparteSearchRequest(settings)) {
-                setContraparteSearchLoading(false);
-            }
+</script>
+<!-- Select tipo de atención -->
+<script>
+    const visitaSelect = document.getElementById('visita');
+    fetch("{{ url_for('udp_tipos_visitas.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.text;
+                option.text = item.text;
+                visitaSelect.appendChild(option);
+            });
         });
-        nuevaContraparte.addEventListener('change', actualizarFormularioContraparte);
-        mostrarNuevaContraparte.addEventListener('click', () => cambiarModoContraparte(!nuevaContraparte.checked));
-        actualizarFormularioContraparte();
-        fetch("{{ url_for('udp_sexos.select_json') }}")
-            .then(response => response.json())
-            .then(data => {
-                const sexoSelect = document.getElementById('contraparte_udp_sexo');
-                data.results.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.text = item.text;
-                    sexoSelect.appendChild(option);
-                });
+</script>
+<!-- Select Defensor -->
+<script>
+    const defensorSelect = document.getElementById('defensor');
+    // Cargar las opciones del select defensor
+    fetch("{{ url_for('usuarios.select_json', rol='DEFENSOR') }}")
+        .then(response => response.json())
+        .then(data => {
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                defensorSelect.appendChild(option);
             });
-        fetch("{{ url_for('udp_tipos_condiciones.select_json') }}")
-            .then(response => response.json())
-            .then(data => {
-                const condicionSelect = document.getElementById('contraparte_udp_tipo_condicion');
-                data.results.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.text = item.text;
-                    condicionSelect.appendChild(option);
-                });
+            {% if defensor_id %}
+            defensorSelect.value = {{ defensor_id }
+        };
+    {% endif %}
             });
-    </script>
-    <!-- Select tipo de atención -->
-    <script>
-        const visitaSelect = document.getElementById('visita');
-        fetch("{{ url_for('udp_tipos_visitas.select_json') }}")
-            .then(response => response.json())
-            .then(data => {
-                data.results.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.text;
-                    option.text = item.text;
-                    visitaSelect.appendChild(option);
-                });
-            });
-    </script>
-    <!-- Select Defensor -->
-    <script>
-        const defensorSelect = document.getElementById('defensor');
-        // Cargar las opciones del select defensor
-        fetch("{{ url_for('usuarios.select_json', rol='DEFENSOR') }}")
-            .then(response => response.json())
-            .then(data => {
-                data.results.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.text = item.text;
-                    defensorSelect.appendChild(option);
-                });
-                {% if defensor_id %}
-                    defensorSelect.value = {{ defensor_id }};
-                {% endif %}
-            });
-    </script>
+</script>
 {% endblock %}

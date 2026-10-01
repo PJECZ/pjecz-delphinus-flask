@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Integer, cast, func, select
+from sqlalchemy import Integer, and_, cast, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 
 from pjecz_delphinus_flask.blueprints.udp_atenciones.models import Estatus, UdpAtencion, UdpAtencionFolio
@@ -10,6 +10,16 @@ from pjecz_delphinus_flask.config.extensions import database
 
 PRIMERA_VEZ = "PRIMERA VEZ"
 SUBSECUENTE = "SUBSECUENTE"
+
+
+def filtro_participacion(persona_id: int, segunda_persona_id: int | None = None):
+    """Filtrar atenciones donde participa una persona o una pareja, sin importar su orientación."""
+    if segunda_persona_id is None:
+        return or_(UdpAtencion.udp_persona_id == persona_id, UdpAtencion.contraparte_id == persona_id)
+    return or_(
+        and_(UdpAtencion.udp_persona_id == persona_id, UdpAtencion.contraparte_id == segunda_persona_id),
+        and_(UdpAtencion.udp_persona_id == segunda_persona_id, UdpAtencion.contraparte_id == persona_id),
+    )
 
 
 def _generar_folio(anio: int) -> str:

@@ -5,9 +5,10 @@ UDP Atenciones, vistas
 import json
 from datetime import datetime, time
 
-from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, flash, get_flashed_messages, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 
 from pjecz_delphinus_flask.blueprints.bitacoras.models import Bitacora
@@ -16,7 +17,7 @@ from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
 from pjecz_delphinus_flask.blueprints.udp_atenciones.forms import UdpAtencionForm
 from pjecz_delphinus_flask.blueprints.udp_atenciones.models import Estatus, UdpAtencion
 from pjecz_delphinus_flask.blueprints.udp_atenciones.pdf import generar_resumen_pdf
-from pjecz_delphinus_flask.blueprints.udp_atenciones.services import asignar_datos_iniciales
+from pjecz_delphinus_flask.blueprints.udp_atenciones.services import asignar_datos_iniciales, filtro_participacion
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
 from pjecz_delphinus_flask.blueprints.usuarios.models import Usuario
@@ -27,6 +28,7 @@ from pjecz_delphinus_flask.lib.safe_string import safe_message, safe_string
 MODULO = "UDP ATENCIONES"
 
 udp_atenciones = Blueprint("udp_atenciones", __name__, template_folder="templates")
+ATENCIONES_PAGE_SIZE = 50
 
 
 def get_contraparte(form: UdpAtencionForm) -> UdpPersona | None:
@@ -82,14 +84,16 @@ def save_atencion_contraparte(udp_atencion: UdpAtencion, contraparte: UdpPersona
 
 def configurar_estatus(form: UdpAtencionForm) -> None:
     """Cargar estados funcionales activos en el formulario."""
-    form.estatus_id.choices = [(str(estatus.id), estatus.nombre.title()) for estatus in Estatus.query.filter_by(estatus="A").order_by(Estatus.id)]
+    form.estatus_id.choices = [
+        (str(estatus.id), estatus.nombre.title()) for estatus in Estatus.query.filter_by(estatus="A").order_by(Estatus.id)
+    ]
 
 
 def get_defensor(form: UdpAtencionForm) -> Usuario | None:
     """Resolver un defensor activo seleccionado en el formulario."""
     try:
         defensor_id = int(form.defensor.data)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         defensor_id = None
     defensor = Usuario.query.filter_by(id=defensor_id, estatus="A").first() if defensor_id is not None else None
     if defensor is None or "DEFENSOR" not in defensor.get_roles():
@@ -162,6 +166,64 @@ def datatable_json():
     return output_datatable_json(draw, total, data)
 
 
+@udp_atenciones.route("/udp_atenciones/relacionadas_json")
+def relacionadas_json():
+    """Listar atenciones de una persona o de una pareja seleccionada."""
+    persona_ids = {}
+    for field_name in ("udp_persona_id", "contraparte_id"):
+        value = request.args.get(field_name)
+        if value is None:
+            continue
+        try:
+            persona_id = int(value)
+        except ValueError:
+            return jsonify(error="El identificador de persona no es válido."), 400
+        if persona_id < 1:
+            return jsonify(error="El identificador de persona no es válido."), 400
+        persona_ids[field_name] = persona_id
+    if not persona_ids:
+        return jsonify(error="Seleccione al menos una persona."), 400
+
+    ids = set(persona_ids.values())
+    personas_activas = UdpPersona.query.filter(UdpPersona.id.in_(ids), UdpPersona.estatus == "A").all()
+    if {persona.id for persona in personas_activas} != ids:
+        return jsonify(error="Una de las personas seleccionadas no está disponible."), 404
+
+    udp_persona_id = persona_ids.get("udp_persona_id")
+    contraparte_id = persona_ids.get("contraparte_id")
+    persona_id = udp_persona_id if udp_persona_id is not None else contraparte_id
+    filtro = filtro_participacion(persona_id, contraparte_id if udp_persona_id is not None else None)
+    consulta = (
+        UdpAtencion.query.options(joinedload(UdpAtencion.udp_tipo_tramite))
+        .filter(filtro)
+        .order_by(UdpAtencion.fecha.desc().nullslast(), UdpAtencion.id.desc())
+    )
+    resultados = consulta.limit(ATENCIONES_PAGE_SIZE + 1).all()
+    has_more = len(resultados) > ATENCIONES_PAGE_SIZE
+    resultados = resultados[:ATENCIONES_PAGE_SIZE]
+    data = []
+    for atencion in resultados:
+        if udp_persona_id is not None and contraparte_id is not None:
+            participacion = "Ambos"
+        elif atencion.udp_persona_id == persona_id:
+            participacion = "Actor"
+        else:
+            participacion = "Contraparte"
+        data.append(
+            {
+                "id": atencion.id,
+                "folio": atencion.folio or "",
+                "fecha": atencion.fecha.strftime("%Y-%m-%d") if atencion.fecha else "",
+                "tipo": atencion.udp_tipo_tramite.nombre,
+                "tipo_atencion": atencion.visita or "",
+                "expediente": atencion.expediente or "",
+                "participacion": participacion,
+                "url": url_for("udp_atenciones.detail", udp_atencion_id=atencion.id),
+            }
+        )
+    return jsonify(results=data, pagination={"more": has_more})
+
+
 @udp_atenciones.route("/udp_atenciones")
 def list_active():
     """Listado de Atenciones activas"""
@@ -216,39 +278,36 @@ def resumen_pdf(udp_atencion_id):
 @permission_required(MODULO, Permiso.CREAR)
 def new(udp_persona_id):
     """Nueva Atención"""
-    udp_persona = UdpPersona.query.get_or_404(udp_persona_id)
+    udp_persona = UdpPersona.query.filter_by(id=udp_persona_id, estatus="A").first_or_404()
     form = UdpAtencionForm()
+    is_inline_request = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    distrito_por_defecto = current_user.autoridad.distrito if current_user.autoridad else None
+    autoridad_por_defecto = current_user.autoridad
+    defensor_id = current_user.id if "DEFENSOR" in current_user.get_roles() else None
+
+    def render_form_error(message):
+        if is_inline_request:
+            get_flashed_messages()
+            return jsonify(error=message, errors=form.errors), 400
+        return render_template(
+            "udp_atenciones/new.jinja2",
+            form=form,
+            udp_persona=udp_persona,
+            distrito_por_defecto=distrito_por_defecto,
+            autoridad_por_defecto=autoridad_por_defecto,
+            defensor_id=defensor_id,
+        )
+
     if form.validate_on_submit():
         defensor = get_defensor(form)
         if defensor is None:
-            return render_template(
-                "udp_atenciones/new.jinja2",
-                form=form,
-                udp_persona=udp_persona,
-                distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
-                autoridad_por_defecto=current_user.autoridad,
-                defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
-            )
+            return render_form_error("Seleccione un defensor activo.")
         if not form.visita.data:
             flash("Seleccione el tipo de atención.", "warning")
-            return render_template(
-                "udp_atenciones/new.jinja2",
-                form=form,
-                udp_persona=udp_persona,
-                distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
-                autoridad_por_defecto=current_user.autoridad,
-                defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
-            )
+            return render_form_error("Seleccione el tipo de atención.")
         contraparte = get_contraparte(form)
         if not contraparte:
-            return render_template(
-                "udp_atenciones/new.jinja2",
-                form=form,
-                udp_persona=udp_persona,
-                distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
-                autoridad_por_defecto=current_user.autoridad,
-                defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
-            )
+            return render_form_error("Seleccione una contraparte activa o registre una nueva.")
         udp_atencion = UdpAtencion(
             udp_persona_id=udp_persona.id,
             udp_tipo_tramite_id=form.udp_tipo_tramite.data,
@@ -256,18 +315,13 @@ def new(udp_persona_id):
             autoridad_id=form.autoridad.data,
             visita=form.visita.data,
             expediente=form.expediente.data,
-            fecha_siguiente_cita=(datetime.combine(form.fecha_siguiente_cita.data, time.min) if form.fecha_siguiente_cita.data else None),
+            fecha_siguiente_cita=(
+                datetime.combine(form.fecha_siguiente_cita.data, time.min) if form.fecha_siguiente_cita.data else None
+            ),
             observaciones=safe_string(form.observaciones.data, save_enie=True, max_len=1024),
         )
         if not save_atencion_contraparte(udp_atencion, contraparte):
-            return render_template(
-                "udp_atenciones/new.jinja2",
-                form=form,
-                udp_persona=udp_persona,
-                distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
-                autoridad_por_defecto=current_user.autoridad,
-                defensor_id=current_user.id if "DEFENSOR" in current_user.get_roles() else None,
-            )
+            return render_form_error("No fue posible guardar la atención. Revise los datos e inténtelo de nuevo.")
         bitacora = Bitacora(
             modulo=Modulo.query.filter_by(nombre=MODULO).first(),
             usuario=current_user,
@@ -275,16 +329,43 @@ def new(udp_persona_id):
             url=url_for("udp_personas.detail", udp_persona_id=udp_persona.id),
         )
         bitacora.save()
+        if is_inline_request:
+            return jsonify(message="La atención se guardó correctamente."), 201
         flash(bitacora.descripcion, "success")
         return redirect(bitacora.url)
-    # Si el usuario actual tiene rol DEFENSOR, pasar su id como defensor por defecto
-    defensor_id = None
-    if "DEFENSOR" in current_user.get_roles():
-        defensor_id = current_user.id
+    if request.method == "POST" and is_inline_request:
+        return render_form_error("Revise los campos del formulario.")
     return render_template(
         "udp_atenciones/new.jinja2",
         form=form,
         udp_persona=udp_persona,
+        distrito_por_defecto=distrito_por_defecto,
+        autoridad_por_defecto=autoridad_por_defecto,
+        defensor_id=defensor_id,
+    )
+
+
+@udp_atenciones.route("/udp_atenciones/nuevo_fragmento")
+@permission_required(MODULO, Permiso.CREAR)
+def new_fragment():
+    """Renderizar el formulario existente con actor y contraparte validados y preseleccionados."""
+    try:
+        udp_persona_id = int(request.args.get("udp_persona_id", ""))
+        contraparte_id = int(request.args.get("contraparte_id", ""))
+    except ValueError:
+        return jsonify(error="Seleccione un actor y una contraparte válidos."), 400
+    actor = UdpPersona.query.filter_by(id=udp_persona_id, estatus="A").first_or_404()
+    contraparte = UdpPersona.query.filter_by(id=contraparte_id, estatus="A").first_or_404()
+    form = UdpAtencionForm()
+    form.udp_contraparte.choices = [(str(contraparte.id), contraparte.nombre_completo)]
+    form.udp_contraparte.data = str(contraparte.id)
+    defensor_id = current_user.id if "DEFENSOR" in current_user.get_roles() else None
+    return render_template(
+        "udp_atenciones/_form.jinja2",
+        form=form,
+        udp_persona=actor,
+        contraparte=contraparte,
+        inline_mode=True,
         distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
         autoridad_por_defecto=current_user.autoridad,
         defensor_id=defensor_id,
@@ -314,7 +395,7 @@ def edit(udp_atencion_id):
         )
         try:
             estatus_id = int(form.estatus_id.data)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             estatus_id = None
         estatus = Estatus.query.filter_by(id=estatus_id, estatus="A").first() if estatus_id is not None else None
         if estatus is None:
