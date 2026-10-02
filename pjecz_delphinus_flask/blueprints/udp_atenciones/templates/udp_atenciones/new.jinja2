@@ -21,6 +21,15 @@
 <!-- Select udp_tipo_tramite -->
 <script>
     const udpTipoTramiteSelect = document.getElementById('udp_tipo_tramite');
+    const tipoTramitePorDefectoId = {{ (contexto_subsecuente.udp_tipo_tramite_id if contexto_subsecuente else none)| tojson }};
+    const esSubsecuente = {{ 'true' if contexto_subsecuente else 'false' }};
+    if (esSubsecuente) {
+        const opcionVacia = document.createElement('option');
+        opcionVacia.value = '';
+        opcionVacia.text = 'Seleccione un tipo de trámite';
+        opcionVacia.selected = true;
+        udpTipoTramiteSelect.appendChild(opcionVacia);
+    }
     // Cargar las opciones del select udp_tipo_tramite
     fetch("{{ url_for('udp_tipos_tramites.select_json') }}")
         .then(response => response.json())
@@ -30,6 +39,9 @@
                 option.value = item.id;
                 option.text = item.text;
                 udpTipoTramiteSelect.appendChild(option);
+                if (tipoTramitePorDefectoId !== null && String(item.id) === String(tipoTramitePorDefectoId)) {
+                    udpTipoTramiteSelect.value = String(item.id);
+                }
             });
         });
 </script>
@@ -37,6 +49,15 @@
 <script>
     const distritoSelect = document.getElementById('distrito');
     const autoridadSelect = document.getElementById('autoridad');
+    const distritoPorDefectoId = {{ (distrito_por_defecto.id if distrito_por_defecto else none)| tojson }};
+    const autoridadPorDefectoId = {{ (autoridad_por_defecto.id if autoridad_por_defecto else none)| tojson }};
+    if (esSubsecuente) {
+        const opcionVacia = document.createElement('option');
+        opcionVacia.value = '';
+        opcionVacia.text = 'Seleccione un distrito';
+        opcionVacia.selected = true;
+        distritoSelect.appendChild(opcionVacia);
+    }
     // Cargar las opciones del select distrito
     fetch("{{ url_for('distritos.select_json') }}")
         .then(response => response.json())
@@ -47,10 +68,12 @@
                 option.text = item.text;
                 distritoSelect.appendChild(option);
             });
-            distritoSelect.value = {{ distrito_por_defecto.id }
-        }; // Seleccionar el distrito por defecto
-    distritoSelect.dispatchEvent(new Event('change'));
-            });
+            const distritoDisponible = data.results.some(item => String(item.id) === String(distritoPorDefectoId));
+            distritoSelect.value = distritoPorDefectoId !== null && distritoDisponible
+                ? String(distritoPorDefectoId)
+                : '';
+            distritoSelect.dispatchEvent(new Event('change'));
+        });
     // Cargar las opciones del select autoridad, si el distrito cambia
     distritoSelect.addEventListener('change', () => {
         fetch(`{{ url_for('autoridades.select_json') }}?distrito_id=${distritoSelect.value}`)
@@ -63,14 +86,16 @@
                     option.text = item.text;
                     autoridadSelect.appendChild(option);
                 });
-                if (distritoSelect.value == {{ distrito_por_defecto.id }
-            }) {
-            autoridadSelect.value = {{ autoridad_por_defecto.id }
-        }; // Seleccionar la autoridad por defecto
-    }
-                });
-        });
+                const autoridadDisponible = data.results.some(item => String(item.id) === String(autoridadPorDefectoId));
+                if (distritoSelect.value === String(distritoPorDefectoId)) {
+                    autoridadSelect.value = autoridadPorDefectoId !== null && autoridadDisponible
+                        ? String(autoridadPorDefectoId)
+                        : '';
+                }
+            });
+    });
 </script>
+{% if not contexto_subsecuente %}
 <!-- Select Contraparte -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
@@ -299,9 +324,11 @@
             });
         });
 </script>
+{% endif %}
 <!-- Select Defensor -->
 <script>
     const defensorSelect = document.getElementById('defensor');
+    const defensorId = {{ defensor_id| tojson }};
     // Cargar las opciones del select defensor
     fetch("{{ url_for('usuarios.select_json', rol='DEFENSOR') }}")
         .then(response => response.json())
@@ -312,10 +339,19 @@
                 option.text = item.text;
                 defensorSelect.appendChild(option);
             });
-            {% if defensor_id %}
-            defensorSelect.value = {{ defensor_id }
-        };
-    {% endif %}
-            });
+            if (defensorId !== null) {
+                defensorSelect.value = String(defensorId);
+            }
+        });
 </script>
+{% if contexto_subsecuente %}
+<script>
+    const subsecuenteForm = document.getElementById('atencion_form');
+    const subsecuenteSubmit = document.getElementById('guardar');
+    subsecuenteForm.addEventListener('submit', () => {
+        subsecuenteSubmit.disabled = true;
+        subsecuenteSubmit.value = 'Guardando...';
+    });
+</script>
+{% endif %}
 {% endblock %}

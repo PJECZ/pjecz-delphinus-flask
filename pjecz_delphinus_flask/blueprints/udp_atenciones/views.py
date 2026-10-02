@@ -17,8 +17,13 @@ from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
 from pjecz_delphinus_flask.blueprints.udp_atenciones.forms import UdpAtencionForm
 from pjecz_delphinus_flask.blueprints.udp_atenciones.models import Estatus, UdpAtencion
 from pjecz_delphinus_flask.blueprints.udp_atenciones.pdf import generar_resumen_pdf
-from pjecz_delphinus_flask.blueprints.udp_atenciones.services import asignar_datos_iniciales, filtro_participacion
+from pjecz_delphinus_flask.blueprints.udp_atenciones.services import (
+    SUBSECUENTE,
+    asignar_datos_iniciales,
+    filtro_participacion,
+)
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
+from pjecz_delphinus_flask.blueprints.udp_tipos_visitas.models import UdpTipoVisita
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
 from pjecz_delphinus_flask.blueprints.usuarios.models import Usuario
 from pjecz_delphinus_flask.config.extensions import database
@@ -64,13 +69,17 @@ def get_contraparte(form: UdpAtencionForm) -> UdpPersona | None:
     )
 
 
-def save_atencion_contraparte(udp_atencion: UdpAtencion, contraparte: UdpPersona) -> bool:
+def save_atencion_contraparte(
+    udp_atencion: UdpAtencion,
+    contraparte: UdpPersona,
+    atencion_origen: UdpAtencion | None = None,
+) -> bool:
     """Guardar una atención y su contraparte en una sola transacción."""
     udp_atencion.contraparte = contraparte
     database.session.add_all((udp_atencion, contraparte))
     try:
         if udp_atencion.id is None:
-            asignar_datos_iniciales(udp_atencion, udp_atencion.visita)
+            asignar_datos_iniciales(udp_atencion, udp_atencion.visita, atencion_origen)
         database.session.commit()
     except (IntegrityError, ValueError) as error:
         database.session.rollback()
@@ -100,6 +109,16 @@ def get_defensor(form: UdpAtencionForm) -> Usuario | None:
         flash("Seleccione un defensor activo.", "warning")
         return None
     return defensor
+
+
+def get_datos_subsecuente(atencion_origen: UdpAtencion) -> dict[str, int | None]:
+    """Obtener los identificadores de trámite, distrito y autoridad del origen."""
+    autoridad = atencion_origen.autoridad
+    return {
+        "udp_tipo_tramite_id": atencion_origen.udp_tipo_tramite_id,
+        "distrito_id": autoridad.distrito_id if autoridad else None,
+        "autoridad_id": atencion_origen.autoridad_id,
+    }
 
 
 @udp_atenciones.before_request
@@ -274,16 +293,66 @@ def resumen_pdf(udp_atencion_id):
     return respuesta
 
 
+@udp_atenciones.route("/udp_atenciones/<int:udp_atencion_origen_id>/subsecuente", methods=["GET", "POST"])
 @udp_atenciones.route("/udp_atenciones/nuevo/<int:udp_persona_id>", methods=["GET", "POST"])
 @permission_required(MODULO, Permiso.CREAR)
-def new(udp_persona_id):
+def new(udp_persona_id=None, udp_atencion_origen_id=None):
     """Nueva Atención"""
-    udp_persona = UdpPersona.query.filter_by(id=udp_persona_id, estatus="A").first_or_404()
+    contexto_subsecuente = None
+    if udp_atencion_origen_id is not None:
+        atencion_origen = UdpAtencion.query.get_or_404(udp_atencion_origen_id)
+        actor = UdpPersona.query.filter_by(id=atencion_origen.udp_persona_id, estatus="A").first()
+        contraparte_origen = (
+            UdpPersona.query.filter_by(id=atencion_origen.contraparte_id, estatus="A").first()
+            if atencion_origen.contraparte_id
+            else None
+        )
+        defensor_origen = Usuario.query.filter_by(id=atencion_origen.usuario_id, estatus="A").first()
+        tipo_subsecuente = UdpTipoVisita.query.filter_by(nombre=SUBSECUENTE, estatus="A").first()
+        if actor is None:
+            flash("El actor de la atención original no está disponible.", "warning")
+            return redirect(url_for("udp_atenciones.detail", udp_atencion_id=atencion_origen.id))
+        if contraparte_origen is None:
+            flash("La contraparte de la atención original no está disponible.", "warning")
+            return redirect(url_for("udp_atenciones.detail", udp_atencion_id=atencion_origen.id))
+        if defensor_origen is None or "DEFENSOR" not in defensor_origen.get_roles():
+            flash("El defensor de la atención original no está disponible.", "warning")
+            return redirect(url_for("udp_atenciones.detail", udp_atencion_id=atencion_origen.id))
+        if tipo_subsecuente is None:
+            flash("El tipo de atención Subsecuente no está disponible.", "warning")
+            return redirect(url_for("udp_atenciones.detail", udp_atencion_id=atencion_origen.id))
+        udp_persona = actor
+        contexto_subsecuente = {
+            "atencion_origen": atencion_origen,
+            "contraparte": contraparte_origen,
+            "defensor": defensor_origen,
+            "tipo_visita": tipo_subsecuente,
+            **get_datos_subsecuente(atencion_origen),
+        }
+    else:
+        udp_persona = UdpPersona.query.filter_by(id=udp_persona_id, estatus="A").first_or_404()
     form = UdpAtencionForm()
+    if contexto_subsecuente:
+        if request.method == "GET":
+            form.defensor.data = str(contexto_subsecuente["defensor"].id)
+        form.udp_contraparte.data = str(contexto_subsecuente["contraparte"].id)
+        form.visita.data = contexto_subsecuente["tipo_visita"].nombre
     is_inline_request = request.headers.get("X-Requested-With") == "XMLHttpRequest"
-    distrito_por_defecto = current_user.autoridad.distrito if current_user.autoridad else None
-    autoridad_por_defecto = current_user.autoridad
-    defensor_id = current_user.id if "DEFENSOR" in current_user.get_roles() else None
+    if contexto_subsecuente:
+        autoridad_origen = contexto_subsecuente["atencion_origen"].autoridad
+        distrito_origen = autoridad_origen.distrito if autoridad_origen else None
+        distrito_por_defecto = distrito_origen if distrito_origen and distrito_origen.estatus == "A" else None
+        autoridad_por_defecto = (
+            autoridad_origen if autoridad_origen and autoridad_origen.estatus == "A" and distrito_por_defecto else None
+        )
+    else:
+        distrito_por_defecto = current_user.autoridad.distrito if current_user.autoridad else None
+        autoridad_por_defecto = current_user.autoridad
+    defensor_id = (
+        contexto_subsecuente["defensor"].id
+        if contexto_subsecuente
+        else current_user.id if "DEFENSOR" in current_user.get_roles() else None
+    )
 
     def render_form_error(message):
         if is_inline_request:
@@ -296,16 +365,18 @@ def new(udp_persona_id):
             distrito_por_defecto=distrito_por_defecto,
             autoridad_por_defecto=autoridad_por_defecto,
             defensor_id=defensor_id,
+            contexto_subsecuente=contexto_subsecuente,
         )
 
     if form.validate_on_submit():
         defensor = get_defensor(form)
         if defensor is None:
             return render_form_error("Seleccione un defensor activo.")
-        if not form.visita.data:
+        tipo_visita = contexto_subsecuente["tipo_visita"].nombre if contexto_subsecuente else form.visita.data
+        if not tipo_visita:
             flash("Seleccione el tipo de atención.", "warning")
             return render_form_error("Seleccione el tipo de atención.")
-        contraparte = get_contraparte(form)
+        contraparte = contexto_subsecuente["contraparte"] if contexto_subsecuente else get_contraparte(form)
         if not contraparte:
             return render_form_error("Seleccione una contraparte activa o registre una nueva.")
         udp_atencion = UdpAtencion(
@@ -313,14 +384,15 @@ def new(udp_persona_id):
             udp_tipo_tramite_id=form.udp_tipo_tramite.data,
             usuario_id=defensor.id,
             autoridad_id=form.autoridad.data,
-            visita=form.visita.data,
+            visita=tipo_visita,
             expediente=form.expediente.data,
             fecha_siguiente_cita=(
                 datetime.combine(form.fecha_siguiente_cita.data, time.min) if form.fecha_siguiente_cita.data else None
             ),
             observaciones=safe_string(form.observaciones.data, save_enie=True, max_len=1024),
         )
-        if not save_atencion_contraparte(udp_atencion, contraparte):
+        atencion_origen = contexto_subsecuente["atencion_origen"] if contexto_subsecuente else None
+        if not save_atencion_contraparte(udp_atencion, contraparte, atencion_origen):
             return render_form_error("No fue posible guardar la atención. Revise los datos e inténtelo de nuevo.")
         bitacora = Bitacora(
             modulo=Modulo.query.filter_by(nombre=MODULO).first(),
@@ -342,6 +414,7 @@ def new(udp_persona_id):
         distrito_por_defecto=distrito_por_defecto,
         autoridad_por_defecto=autoridad_por_defecto,
         defensor_id=defensor_id,
+        contexto_subsecuente=contexto_subsecuente,
     )
 
 

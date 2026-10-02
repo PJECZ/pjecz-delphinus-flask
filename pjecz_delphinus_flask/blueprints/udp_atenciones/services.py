@@ -40,7 +40,11 @@ def _generar_folio(anio: int) -> str:
     return f"{contador.ultimo_numero}/{anio}"
 
 
-def asignar_datos_iniciales(udp_atencion: UdpAtencion, tipo_atencion: str | None) -> None:
+def asignar_datos_iniciales(
+    udp_atencion: UdpAtencion,
+    tipo_atencion: str | None,
+    atencion_origen: UdpAtencion | None = None,
+) -> None:
     """Asignar folio inicial y estado funcional a una atención nueva."""
     estatus_asignado = database.session.execute(
         select(Estatus).where(Estatus.nombre == "asignado", Estatus.estatus == "A")
@@ -51,6 +55,19 @@ def asignar_datos_iniciales(udp_atencion: UdpAtencion, tipo_atencion: str | None
 
     tipo_atencion = (tipo_atencion or PRIMERA_VEZ).strip().upper()
     if tipo_atencion == SUBSECUENTE:
+        if atencion_origen is not None:
+            atencion_inicial = atencion_origen if atencion_origen.visita == PRIMERA_VEZ else atencion_origen.atencion_inicial
+            if (
+                atencion_inicial is None
+                or atencion_inicial.visita != PRIMERA_VEZ
+                or atencion_inicial.udp_persona_id != udp_atencion.udp_persona_id
+                or not atencion_inicial.folio
+            ):
+                raise ValueError("No existe una primera atención válida para reutilizar el folio.")
+            udp_atencion.folio = atencion_inicial.folio
+            udp_atencion.atencion_inicial = atencion_inicial
+            return
+
         consulta_inicial = select(UdpAtencion).where(
             UdpAtencion.udp_persona_id == udp_atencion.udp_persona_id,
             UdpAtencion.visita == PRIMERA_VEZ,
