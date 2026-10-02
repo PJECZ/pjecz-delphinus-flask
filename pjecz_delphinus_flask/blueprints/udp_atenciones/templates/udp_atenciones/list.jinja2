@@ -6,6 +6,15 @@
 
 {% block topbar_actions %}
     {% call topbar.page_buttons(titulo) %}
+        {% if 'DEFENSOR' in current_user.get_roles() and estatus == 'A' %}
+            {% if filtro == 'asignados' %}
+                {{ topbar.button('Todas', url_for('udp_atenciones.list_active')) }}
+                {{ topbar.button_primary('Asignados', url_for('udp_atenciones.list_active', filtro='asignados')) }}
+            {% else %}
+                {{ topbar.button_primary('Todas', url_for('udp_atenciones.list_active')) }}
+                {{ topbar.button('Asignados', url_for('udp_atenciones.list_active', filtro='asignados')) }}
+            {% endif %}
+        {% endif %}
         {% if current_user.can_admin('UDP ATENCIONES') %}
             {% if estatus == 'A' %}{{ topbar.button_list_inactive('Inactivos', url_for('udp_atenciones.list_inactive')) }}{% endif %}
             {% if estatus == 'B' %}{{ topbar.button_list_active('Activos', url_for('udp_atenciones.list_active')) }}{% endif %}
@@ -21,8 +30,12 @@
                     <th>Fecha Hora</th>
                     <th>Tipo Trámite</th>
                     <th>Usuario</th>
-                    <th>Autoridad</th>
+                    <th>Folio</th>
                     <th>Expediente</th>
+                    <th>Autoridad</th>
+                    <th>Tipo atención</th>
+                    <th>Siguiente cita</th>
+                    <th>Estatus</th>
                 </tr>
             </thead>
         </table>
@@ -35,14 +48,22 @@
     <script>
         const constructorDataTable = new ConfigDataTable( '{{ csrf_token() }}' );
         let configDT = constructorDataTable.config();
+        {% if filtro == 'asignados' %}
+        configDT['language']['zeroRecords'] = 'No tienes atenciones asignadas actualmente.';
+        configDT['language']['infoEmpty'] = 'No tienes atenciones asignadas actualmente.';
+        {% endif %}
         configDT['ajax']['url'] = "{{ url_for('udp_atenciones.datatable_json') }}";
         configDT['ajax']['data'] = {{ filtros }};
         configDT['columns'] = [
             { data: 'detalle' },
             { data: 'udp_tipo_tramite_nombre' },
             { data: 'usuario_email' },
+            { data: 'folio' },
+            { data: 'expediente' },
             { data: 'autoridad_clave' },
-            { data: 'expediente' }
+            { data: 'tipo_atencion' },
+            { data: 'fecha_siguiente_cita' },
+            { data: 'estatus_atencion' }
         ];
         configDT['columnDefs'] = [
             {

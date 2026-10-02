@@ -1,0 +1,113 @@
+{% import 'macros/form.jinja2' as f with context %}
+{% call f.card() %}
+{% set form_kwargs = {'udp_atencion_origen_id': contexto_subsecuente.atencion_origen.id} if contexto_subsecuente else
+{'udp_persona_id': udp_persona.id} %}
+{% if inline_mode %}
+<div data-inline-atencion-config data-tipo-tramite-url="{{ url_for('udp_tipos_tramites.select_json') }}"
+    data-distritos-url="{{ url_for('distritos.select_json') }}"
+    data-autoridades-url="{{ url_for('autoridades.select_json') }}"
+    data-visitas-url="{{ url_for('udp_tipos_visitas.select_json') }}"
+    data-defensores-url="{{ url_for('usuarios.select_json', rol='DEFENSOR') }}"
+    data-distrito-id="{{ distrito_por_defecto.id if distrito_por_defecto else '' }}"
+    data-autoridad-id="{{ autoridad_por_defecto.id if autoridad_por_defecto else '' }}"
+    data-defensor-id="{{ defensor_id or '' }}">
+    <div class="alert d-none" data-inline-save-feedback role="status" aria-live="polite"></div>
+    {% endif %}
+    {% call f.form_tag('udp_atenciones.new', fid='atencion_form', **form_kwargs) %}
+    {% call f.form_group(form.udp_tipo_tramite) %}{% endcall %}
+    {% call f.form_group(form.distrito) %}{% endcall %}
+    {% call f.form_group(form.autoridad) %}{% endcall %}
+    {% if contexto_subsecuente %}
+    <section class="mb-3 rounded border border-start border-4 border-primary-subtle bg-body-tertiary p-3 p-md-4"
+        aria-label="Nueva atención subsecuente">
+        <h2 class="h5 mb-3">Nueva atención subsecuente</h2>
+        <div class="row g-2">
+            <div class="col-12"><strong>Actor:</strong> {{ udp_persona.nombre_completo }}</div>
+            <div class="col-12"><strong>Contraparte:</strong> {{ contexto_subsecuente.contraparte.nombre_completo }}
+            </div>
+            <div class="col-12">{% call f.form_group(form.defensor) %}{% endcall %}</div>
+            <div class="col-12"><strong>Tipo:</strong> {{ contexto_subsecuente.tipo_visita.nombre }}</div>
+        </div>
+    </section>
+    {% else %}
+    {% call f.form_group(form.defensor) %}{% endcall %}
+    {% call f.form_group(form.visita) %}{% endcall %}
+    {% endif %}
+    {% if inline_mode %}
+    <section class="mb-3 rounded border border-start border-4 border-primary-subtle bg-body-tertiary p-3 p-md-4"
+        aria-label="Personas de la atención">
+        <input type="hidden" name="udp_persona_id" value="{{ udp_persona.id }}">
+        <div class="mb-2"><strong>Actor:</strong> {{ udp_persona.nombre_completo }}</div>
+        <div><strong>Contraparte:</strong> {{ contraparte.nombre_completo }}</div>
+        <div class="d-none">{{ form.udp_contraparte() }}</div>
+    </section>
+    {% elif not contexto_subsecuente %}
+    <section id="contraparte-busqueda-campos"
+        class="mb-3 rounded border border-start border-4 border-primary-subtle bg-body-tertiary p-3 p-md-4"
+        aria-labelledby="contraparte-busqueda-titulo">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="mdi mdi-magnify text-primary fs-4" aria-hidden="true"></span>
+            <h2 id="contraparte-busqueda-titulo" class="h5 mb-0">Buscar contraparte existente</h2>
+        </div>
+        <div class="row g-3">
+            <div class="col-12">{% call f.form_group(form.busqueda_nombres) %}{% endcall %}</div>
+            <div class="col-12 col-md-6">{% call f.form_group(form.busqueda_apellido_primero) %}{% endcall %}</div>
+            <div class="col-12 col-md-6">{% call f.form_group(form.busqueda_apellido_segundo) %}{% endcall %}</div>
+            <div class="col-12">{% call f.form_group(form.busqueda_curp) %}{% endcall %}</div>
+            <div class="col-12">
+                <button id="buscar-contraparte" class="btn btn-primary" type="button" aria-busy="false">
+                    <span id="buscar-contraparte-icono" class="mdi mdi-magnify me-1" aria-hidden="true"></span>
+                    <span id="buscar-contraparte-spinner" class="mdi mdi-loading mdi-spin me-1 d-none"
+                        aria-hidden="true"></span>
+                    <span id="buscar-contraparte-etiqueta">Buscar contraparte</span>
+                </button>
+                <div id="contraparte-search-feedback" class="alert alert-warning mt-3 mb-0 py-2 d-none" role="status"
+                    aria-live="polite"></div>
+            </div>
+            <div class="col-12">{% call f.form_group(form.udp_contraparte) %}{% endcall %}</div>
+        </div>
+    </section>
+    <div id="contraparte-alta-opcion" class="border-top mb-3 pt-3">
+        <p id="contraparte-alta-ayuda" class="text-body-secondary mb-2">¿No encuentras a la persona?</p>
+        <button id="mostrar-nueva-contraparte" class="btn btn-outline-success" type="button" aria-expanded="false"
+            aria-controls="nueva-contraparte-campos">
+            <span id="modo-contraparte-icono" class="mdi mdi-account-plus-outline me-1" aria-hidden="true"></span>
+            <span id="modo-contraparte-etiqueta">Registrar nueva contraparte</span>
+        </button>
+        {{ form.nueva_contraparte(class="d-none") }}
+    </div>
+    <section id="nueva-contraparte-campos"
+        class="d-none mb-3 rounded border border-start border-4 border-success-subtle bg-body-tertiary p-3 p-md-4"
+        aria-labelledby="nueva-contraparte-titulo">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="mdi mdi-account-plus-outline text-success fs-4" aria-hidden="true"></span>
+            <h2 id="nueva-contraparte-titulo" class="h5 mb-0">Nueva contraparte</h2>
+        </div>
+        <div class="row g-3">
+            <div class="col-12">{% call f.form_group(form.contraparte_nombres) %}{% endcall %}</div>
+            <div class="col-12 col-md-6">{% call f.form_group(form.contraparte_apellido_primero) %}{% endcall %}</div>
+            <div class="col-12 col-md-6">{% call f.form_group(form.contraparte_apellido_segundo) %}{% endcall %}</div>
+            <div class="col-12 col-md-6">{% call f.form_group(form.contraparte_nacimiento_fecha) %}{% endcall %}</div>
+            <div class="col-12 col-md-6">{% call f.form_group(form.contraparte_udp_sexo) %}{% endcall %}</div>
+            <div class="col-12 col-md-6">{% call f.form_group(form.contraparte_udp_tipo_condicion) %}{% endcall %}</div>
+            <div class="col-12 col-md-6">{% call f.form_group(form.contraparte_curp) %}{% endcall %}</div>
+            <div class="col-12">{% call f.form_group(form.contraparte_observaciones, rows="4") %}{% endcall %}</div>
+        </div>
+    </section>
+    {% endif %}
+    {% call f.form_group(form.expediente) %}{% endcall %}
+    {% call f.form_group(form.fecha_siguiente_cita) %}{% endcall %}
+    {% call f.form_group(form.observaciones, rows="8") %}{% endcall %}
+    {% if contexto_subsecuente %}
+    <div class="form-group d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center my-2">
+        {{ form.guardar(class="btn btn-success text-white") }}
+        <a class="btn btn-outline-danger"
+            href="{{ url_for('udp_atenciones.detail', udp_atencion_id=contexto_subsecuente.atencion_origen.id) }}">Cancelar</a>
+    </div>
+    {% else %}
+    {% call f.form_group(form.guardar) %}{% endcall %}
+    {% endif %}
+    {% endcall %}
+    {% if inline_mode %}
+</div>{% endif %}
+{% endcall %}

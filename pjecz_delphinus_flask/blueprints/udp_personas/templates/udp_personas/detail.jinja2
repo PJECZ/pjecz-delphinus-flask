@@ -55,7 +55,7 @@
                             <th>Fecha Hora</th>
                             <th>Tipo Trámite</th>
                             <th>Usuario</th>
-                            <th>Autoridad</th>
+                            <th>Folio</th>
                             <th>Expediente</th>
                         </tr>
                     </thead>
@@ -132,12 +132,12 @@
         <script>
             let configDTAtenciones = constructorDataTable.config();
             configDTAtenciones['ajax']['url'] = "{{ url_for('udp_atenciones.datatable_json') }}";
-            configDTAtenciones['ajax']['data'] = { 'estatus': 'A', 'udp_persona_id': {{ udp_persona.id }} };
+            configDTAtenciones['ajax']['data'] = { 'udp_persona_id': {{ udp_persona.id }} };
             configDTAtenciones['columns'] = [
                 { data: 'detalle' },
                 { data: 'udp_tipo_tramite_nombre' },
                 { data: 'usuario_email' },
-                { data: 'autoridad_clave' },
+                { data: 'folio' },
                 { data: 'expediente' }
             ];
             configDTAtenciones['columnDefs'] = [

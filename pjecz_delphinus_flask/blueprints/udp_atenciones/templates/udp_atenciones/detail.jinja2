@@ -6,35 +6,77 @@
 {% block title %}Atención de {{ udp_atencion.udp_persona.nombre_completo }}{% endblock %}
 
 {% block topbar_actions %}
-    {% call topbar.page_buttons('Atención de ' + udp_atencion.udp_persona.nombre_completo) %}
-        {{ topbar.button_previous('Persona', url_for('udp_personas.detail', udp_persona_id=udp_atencion.udp_persona_id)) }}
-        {% if current_user.can_edit('UDP ATENCIONES') %}
-            {{ topbar.button_edit('Editar', url_for('udp_atenciones.edit', udp_atencion_id=udp_atencion.id)) }}
-        {% endif %}
-        {% if current_user.can_admin('UDP ATENCIONES') %}
-            {% if udp_atencion.estatus == 'A' %}{{ topbar.button_delete('Eliminar', url_for('udp_atenciones.delete', udp_atencion_id=udp_atencion.id)) }}{% endif %}
-            {% if udp_atencion.estatus == 'B' %}{{ topbar.button_recover('Recuperar', url_for('udp_atenciones.recover', udp_atencion_id=udp_atencion.id)) }}{% endif %}
-        {% endif %}
-    {% endcall %}
+{% call topbar.page_buttons('Atención de ' + udp_atencion.udp_persona.nombre_completo) %}
+{{ topbar.button_previous('Persona', url_for('udp_personas.detail', udp_persona_id=udp_atencion.udp_persona_id)) }}
+{{ topbar.button('Imprimir resumen', url_for('udp_atenciones.resumen_pdf', udp_atencion_id=udp_atencion.id), 'mdi
+mdi-printer') }}
+{% if current_user.can_insert('UDP ATENCIONES') %}
+<a class="btn btn-sm btn-outline-primary"
+    href="{{ url_for('udp_atenciones.new', udp_atencion_origen_id=udp_atencion.id) }}" data-subsecuente-link>
+    <span class="mdi mdi-plus" data-subsecuente-icon aria-hidden="true"></span>
+    <span data-subsecuente-label>Crear subsecuente</span>
+</a>
+{% endif %}
+{% if current_user.can_edit('UDP ATENCIONES') %}
+{{ topbar.button_edit('Editar', url_for('udp_atenciones.edit', udp_atencion_id=udp_atencion.id)) }}
+{% endif %}
+{% if current_user.can_admin('UDP ATENCIONES') %}
+{% if udp_atencion.estatus == 'A' %}{{ topbar.button_delete('Eliminar', url_for('udp_atenciones.delete',
+udp_atencion_id=udp_atencion.id)) }}{% endif %}
+{% if udp_atencion.estatus == 'B' %}{{ topbar.button_recover('Recuperar', url_for('udp_atenciones.recover',
+udp_atencion_id=udp_atencion.id)) }}{% endif %}
+{% endif %}
+{% endcall %}
 {% endblock %}
 
 {% block content %}
-    {% call detail.card(estatus=udp_atencion.estatus) %}
-        <div class="row">
-            {{ detail.label_value('Persona', udp_atencion.udp_persona.nombre_completo, url_for('udp_personas.detail', udp_persona_id=udp_atencion.udp_persona_id)) }}
-            {{ detail.label_value('Tipo de Trámite', udp_atencion.udp_tipo_tramite.nombre) }}
-            {{ detail.label_value('Distrito', udp_atencion.autoridad.distrito.clave + ' : ' + udp_atencion.autoridad.distrito.nombre_corto) }}
-            {{ detail.label_value('Autoridad', udp_atencion.autoridad.clave + ' : ' + udp_atencion.autoridad.descripcion_corta) }}
-            {{ detail.label_value('Expediente', udp_atencion.expediente) }}
-            {{ detail.label_value('Observaciones', udp_atencion.observaciones) }}
-            {{ detail.label_value('Defensor asignado', udp_atencion.usuario.email) }}
-        </div>
-    {% endcall %}
+{% call detail.card(estatus=udp_atencion.estatus) %}
+<div class="row">
+    {{ detail.label_value('Persona', udp_atencion.udp_persona.nombre_completo, url_for('udp_personas.detail',
+    udp_persona_id=udp_atencion.udp_persona_id)) }}
+    {{ detail.label_value('Tipo de Trámite', udp_atencion.udp_tipo_tramite.nombre) }}
+    {{ detail.label_value('Distrito', udp_atencion.autoridad.distrito.clave + ' : ' +
+    udp_atencion.autoridad.distrito.nombre_corto if udp_atencion.autoridad and udp_atencion.autoridad.distrito else '')
+    }}
+    {{ detail.label_value('Autoridad', udp_atencion.autoridad.clave + ' : ' + udp_atencion.autoridad.descripcion_corta
+    if udp_atencion.autoridad else '') }}
+    {% if udp_atencion.contraparte %}
+    {{ detail.label_value('Contraparte', udp_atencion.contraparte.nombre_completo, url_for('udp_personas.detail',
+    udp_persona_id=udp_atencion.contraparte_id)) }}
+    {% endif %}
+    {{ detail.label_value('Expediente', udp_atencion.expediente) }}
+    {{ detail.label_value('Folio', udp_atencion.folio) }}
+    {{ detail.label_value('Tipo de atención', udp_atencion.visita) }}
+    {{ detail.label_value('Fecha de siguiente cita', udp_atencion.fecha_siguiente_cita.strftime('%Y-%m-%d') if
+    udp_atencion.fecha_siguiente_cita else '') }}
+    {{ detail.label_value('Estatus', udp_atencion.estatus_atencion.nombre if udp_atencion.estatus_atencion else '') }}
+    {{ detail.label_value('Observaciones', udp_atencion.observaciones) }}
+    {{ detail.label_value('Defensor asignado', udp_atencion.usuario.email) }}
+</div>
+{% endcall %}
 {% endblock %}
 
 {% block custom_javascript %}
-    {% if current_user.can_admin('UDP ATENCIONES') %}
-        {% if udp_atencion.estatus == 'A' %}{{ modals.custom_javascript_delete('Eliminar', '¿Eliminar esta atención?') }}{% endif %}
-        {% if udp_atencion.estatus == 'B' %}{{ modals.custom_javascript_recover('Recuperar', '¿Recuperar esta atención?') }}{% endif %}
-    {% endif %}
+{% if current_user.can_insert('UDP ATENCIONES') %}
+<script>
+    const subsecuenteLink = document.querySelector('[data-subsecuente-link]');
+    subsecuenteLink?.addEventListener('click', event => {
+        if (subsecuenteLink.dataset.loading === 'true') {
+            event.preventDefault();
+            return;
+        }
+        subsecuenteLink.dataset.loading = 'true';
+        subsecuenteLink.classList.add('disabled');
+        subsecuenteLink.setAttribute('aria-disabled', 'true');
+        subsecuenteLink.querySelector('[data-subsecuente-icon]').className = 'mdi mdi-loading mdi-spin';
+        subsecuenteLink.querySelector('[data-subsecuente-label]').textContent = 'Cargando...';
+    });
+</script>
+{% endif %}
+{% if current_user.can_admin('UDP ATENCIONES') %}
+{% if udp_atencion.estatus == 'A' %}{{ modals.custom_javascript_delete('Eliminar', '¿Eliminar esta atención?') }}{%
+endif %}
+{% if udp_atencion.estatus == 'B' %}{{ modals.custom_javascript_recover('Recuperar', '¿Recuperar esta atención?') }}{%
+endif %}
+{% endif %}
 {% endblock %}
