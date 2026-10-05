@@ -57,8 +57,18 @@
                     </div>
 
                     {% if current_user.can_insert('UDP PERSONAS') %}
-                    <form class="atencion-person-panel__registration d-none" data-person-registration novalidate>
-                        <h3 class="h6">Registrar persona</h3>
+                    <form class="atencion-person-panel__registration d-none" data-person-registration
+                        aria-labelledby="actor-registration-title" novalidate>
+                        <div class="atencion-person-panel__registration-heading">
+                            <span class="mdi mdi-account-plus-outline" aria-hidden="true"></span>
+                            <div>
+                                <p class="atencion-person-panel__registration-eyebrow mb-1">NUEVO REGISTRO</p>
+                                <h3 class="h5 mb-1" id="actor-registration-title">Registrar nueva persona</h3>
+                                <p class="small text-body-secondary mb-0">
+                                    Completa los datos de la persona. Podrás revisarlos antes de guardar.
+                                </p>
+                            </div>
+                        </div>
                         <div class="row g-3">
                             <div class="col-12">
                                 <label class="form-label" for="actor-reg-nombres">Nombre(s)</label>
@@ -178,8 +188,18 @@
                     </div>
 
                     {% if current_user.can_insert('UDP PERSONAS') %}
-                    <form class="atencion-person-panel__registration d-none" data-person-registration novalidate>
-                        <h3 class="h6">Registrar persona</h3>
+                    <form class="atencion-person-panel__registration d-none" data-person-registration
+                        aria-labelledby="contraparte-registration-title" novalidate>
+                        <div class="atencion-person-panel__registration-heading">
+                            <span class="mdi mdi-account-plus-outline" aria-hidden="true"></span>
+                            <div>
+                                <p class="atencion-person-panel__registration-eyebrow mb-1">NUEVO REGISTRO</p>
+                                <h3 class="h5 mb-1" id="contraparte-registration-title">Registrar nueva persona</h3>
+                                <p class="small text-body-secondary mb-0">
+                                    Completa los datos de la persona. Podrás revisarlos antes de guardar.
+                                </p>
+                            </div>
+                        </div>
                         <div class="row g-3">
                             <div class="col-12">
                                 <label class="form-label" for="contraparte-reg-nombres">Nombre(s)</label>

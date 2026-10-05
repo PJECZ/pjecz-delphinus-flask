@@ -36,7 +36,7 @@
     }
 
     function personName(person) {
-        return [person.apellido_primero, person.apellido_segundo, person.nombres]
+        return [person.nombres, person.apellido_primero, person.apellido_segundo]
             .filter(Boolean)
             .join(' ');
     }
@@ -121,6 +121,8 @@
     }
 
     function updateSelectedPerson(role) {
+        console.log('Updating selected person for role:', role);
+
         const panel = module.querySelector(`[data-person-role="${role}"]`);
         const person = selectedPeople[role];
         const empty = panel.querySelector('[data-selected-empty]');
@@ -153,6 +155,7 @@
     }
 
     function appendAttention(atencion) {
+        console.log('Appending attention:', atencion);
         const item = document.createElement('li');
         item.className = 'list-group-item';
         const link = document.createElement('a');
@@ -391,6 +394,11 @@
         if (!form) {
             return;
         }
+        ['nombres', 'apellido_primero', 'apellido_segundo'].forEach(name => {
+            const source = panel.querySelector(`[data-search-field="${name}"]`);
+            const target = form.elements.namedItem(name);
+            target.value = source.value.trim();
+        });
         const feedback = form.querySelector('[data-registration-feedback]');
         const registerButton = panel.querySelector('[data-action="register"]');
         registerButton.disabled = true;
@@ -438,7 +446,7 @@
                 throw new Error(data.error || 'No fue posible registrar a la persona.');
             }
             const role = panel.dataset.personRole;
-            selectedPeople[role] = { id: data.person.id, nombre_completo: data.person.nombre_completo };
+            selectedPeople[role] = { id: data.persona.id, nombre_completo: data.persona.nombre_completo };
             closeNewAttention();
             module.querySelector('[data-new-attention-content]').replaceChildren();
             updateSelectedPerson(role);

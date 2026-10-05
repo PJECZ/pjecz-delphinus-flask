@@ -74,6 +74,53 @@
     margin-top: 1.25rem;
 }
 
+#atencionFormContainer .atencion-person-panel__registration {
+    position: relative;
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--atencion-role-color) 32%, var(--bs-border-color));
+    border-left: 4px solid var(--atencion-role-color);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--atencion-role-color) 4%, var(--bs-body-bg));
+    box-shadow: 0 0.35rem 1.1rem color-mix(in srgb, var(--bs-emphasis-color) 7%, transparent);
+}
+
+#atencionFormContainer .atencion-person-panel__registration:not(.d-none) {
+    animation: atencion-registration-enter 180ms ease-out;
+}
+
+#atencionFormContainer .atencion-person-panel__registration-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+
+#atencionFormContainer .atencion-person-panel__registration-heading > .mdi {
+    display: grid;
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--atencion-role-color) 12%, var(--bs-body-bg));
+    color: var(--atencion-role-color);
+    font-size: 1.35rem;
+}
+
+#atencionFormContainer .atencion-person-panel__registration-eyebrow {
+    color: var(--atencion-role-color);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+}
+
+#atencionFormContainer .atencion-person-panel__registration .form-control:focus,
+#atencionFormContainer .atencion-person-panel__registration .form-select:focus {
+    border-color: var(--atencion-role-color);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--atencion-role-color) 20%, transparent);
+}
+
 #atencionFormContainer .atencion-person-panel__selected {
     display: flex;
     align-items: center;
@@ -177,8 +224,30 @@
         padding: 1rem;
     }
 
+    #atencionFormContainer .atencion-person-panel__registration {
+        padding: 1rem;
+    }
+
     #atencionFormContainer .atencion-related__state--empty-pair {
         align-items: flex-start;
         flex-direction: column;
+    }
+}
+
+@keyframes atencion-registration-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.35rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #atencionFormContainer .atencion-person-panel__registration:not(.d-none) {
+        animation: none;
     }
 }
