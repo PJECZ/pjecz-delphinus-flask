@@ -10,11 +10,17 @@
             <h1 id="atencion-module-title" class="h3 mb-1">Nueva atención</h1>
             <p class="text-body-secondary mb-0">Selecciona a las personas relacionadas con la atención.</p>
         </div>
-        <span class="atencion-module__header-icon mdi mdi-clipboard-account-outline" aria-hidden="true"></span>
+        <div class="atencion-module__header-actions">
+            <button class="btn btn-sm btn-outline-primary atencion-module__help" type="button"
+                data-tour-help="index" aria-label="Iniciar tutorial de esta página" title="Ayuda">
+                <span class="mdi mdi-help-circle-outline me-1" aria-hidden="true"></span>Ayuda
+            </button>
+            <span class="atencion-module__header-icon mdi mdi-clipboard-account-outline" aria-hidden="true"></span>
+        </div>
     </header>
 
     <div class="atencion-module__body">
-        <div class="row g-3">
+        <div class="row g-3" data-search-fields>
             <div class="col-12 col-xl-6">
                 <section class="atencion-person-panel atencion-person-panel--actor" data-person-role="actor"
                     aria-labelledby="actor-title">
@@ -26,7 +32,7 @@
                         </div>
                     </div>
 
-                    <div class="row g-3">
+                    <div class="row g-3" data-search-fields>
                         <div class="col-12">
                             <label class="form-label" for="actor-nombres">Nombre</label>
                             <input class="form-control" id="actor-nombres" name="nombres" type="search" maxlength="256"

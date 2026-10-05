@@ -5,11 +5,16 @@
 
 {% block title %}Atención de {{ udp_atencion.udp_persona.nombre_completo }}{% endblock %}
 
+{% block custom_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.8.0/dist/driver.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/driver-tour.css') }}">
+{% endblock %}
+
 {% block topbar_actions %}
 {% call topbar.page_buttons('Atención de ' + udp_atencion.udp_persona.nombre_completo) %}
 {{ topbar.button_previous('Persona', url_for('udp_personas.detail', udp_persona_id=udp_atencion.udp_persona_id)) }}
-{{ topbar.button('Imprimir resumen', url_for('udp_atenciones.resumen_pdf', udp_atencion_id=udp_atencion.id), 'mdi
-mdi-printer') }}
+<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('udp_atenciones.resumen_pdf', udp_atencion_id=udp_atencion.id) }}"
+    data-tour-print><span class="mdi mdi-printer"></span> Imprimir resumen</a>
 {% if current_user.can_insert('UDP ATENCIONES') %}
 <a class="btn btn-sm btn-outline-primary"
     href="{{ url_for('udp_atenciones.new', udp_atencion_origen_id=udp_atencion.id) }}" data-subsecuente-link>
@@ -18,8 +23,13 @@ mdi-printer') }}
 </a>
 {% endif %}
 {% if current_user.can_edit('UDP ATENCIONES') %}
-{{ topbar.button_edit('Editar', url_for('udp_atenciones.edit', udp_atencion_id=udp_atencion.id)) }}
+<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('udp_atenciones.edit', udp_atencion_id=udp_atencion.id) }}"
+    data-tour-edit><span class="mdi mdi-pencil"></span> Editar</a>
 {% endif %}
+<button class="btn btn-sm btn-outline-primary" type="button" data-tour-help="atencion-detail"
+    aria-label="Iniciar tutorial del detalle de atención" title="Ayuda">
+    <span class="mdi mdi-help-circle-outline" aria-hidden="true"></span> Ayuda
+</button>
 {% if current_user.can_admin('UDP ATENCIONES') %}
 {% if udp_atencion.estatus == 'A' %}{{ topbar.button_delete('Eliminar', url_for('udp_atenciones.delete',
 udp_atencion_id=udp_atencion.id)) }}{% endif %}
@@ -31,7 +41,7 @@ udp_atencion_id=udp_atencion.id)) }}{% endif %}
 
 {% block content %}
 {% call detail.card(estatus=udp_atencion.estatus) %}
-<div class="row">
+<div class="row" data-tour-detail="summary">
     {{ detail.label_value('Persona', udp_atencion.udp_persona.nombre_completo, url_for('udp_personas.detail',
     udp_persona_id=udp_atencion.udp_persona_id)) }}
     {{ detail.label_value('Tipo de Trámite', udp_atencion.udp_tipo_tramite.nombre) }}
@@ -57,6 +67,7 @@ udp_atencion_id=udp_atencion.id)) }}{% endif %}
 {% endblock %}
 
 {% block custom_javascript %}
+<script type="module" src="{{ url_for('static', filename='js/tours/atencion-detail-tour.js') }}"></script>
 {% if current_user.can_insert('UDP ATENCIONES') %}
 <script>
     const subsecuenteLink = document.querySelector('[data-subsecuente-link]');

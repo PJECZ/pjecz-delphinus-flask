@@ -33,6 +33,17 @@
     font-size: 2rem;
 }
 
+#atencionFormContainer .atencion-module__header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 1rem;
+}
+
+#atencionFormContainer .atencion-module__help {
+    white-space: nowrap;
+}
+
 #atencionFormContainer .atencion-module__body {
     padding: 1.5rem 1.75rem 1.75rem;
 }
@@ -218,6 +229,14 @@
 
     #atencionFormContainer .atencion-module__header {
         padding-block: 1.25rem;
+    }
+
+    #atencionFormContainer .atencion-module__header-actions {
+        gap: 0.5rem;
+    }
+
+    #atencionFormContainer .atencion-module__header-icon {
+        display: none;
     }
 
     #atencionFormContainer .atencion-person-panel {

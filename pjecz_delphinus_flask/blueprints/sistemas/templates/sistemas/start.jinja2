@@ -11,6 +11,10 @@
 
 {% block custom_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/atencion-form.css') }}">
+{% if current_user.can_view('UDP PERSONAS') and current_user.can_view('UDP ATENCIONES') %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.8.0/dist/driver.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/driver-tour.css') }}">
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -199,6 +203,9 @@
 </script>
 {% if current_user.can_view('UDP ATENCIONES') %}
 <script src="{{ url_for('static', filename='js/atencion-form.js') }}"></script>
+{% endif %}
+{% if current_user.can_view('UDP PERSONAS') and current_user.can_view('UDP ATENCIONES') %}
+<script type="module" src="{{ url_for('static', filename='js/tours/index-tour.js') }}"></script>
 {% endif %}
 {% endif %}
 {% endblock %}
