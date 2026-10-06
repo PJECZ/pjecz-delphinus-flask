@@ -18,6 +18,8 @@ from pjecz_delphinus_flask.blueprints.tareas.views import tareas
 from pjecz_delphinus_flask.blueprints.udp_atenciones.views import udp_atenciones
 from pjecz_delphinus_flask.blueprints.udp_atenciones_contrapartes.views import udp_atenciones_contrapartes
 from pjecz_delphinus_flask.blueprints.udp_contrapartes.views import udp_contrapartes
+from pjecz_delphinus_flask.blueprints.udp_cubiculos.models import UdpCubiculo  # noqa: F401
+from pjecz_delphinus_flask.blueprints.udp_cubiculos.views import udp_cubiculos
 from pjecz_delphinus_flask.blueprints.udp_domicilios.views import udp_domicilios
 from pjecz_delphinus_flask.blueprints.udp_ingresos.views import udp_ingresos
 from pjecz_delphinus_flask.blueprints.udp_personas.views import udp_personas
@@ -58,6 +60,7 @@ def create_app():
     app.register_blueprint(udp_atenciones)
     app.register_blueprint(udp_atenciones_contrapartes)
     app.register_blueprint(udp_contrapartes)
+    app.register_blueprint(udp_cubiculos)
     app.register_blueprint(udp_domicilios)
     app.register_blueprint(udp_ingresos)
     app.register_blueprint(udp_personas)

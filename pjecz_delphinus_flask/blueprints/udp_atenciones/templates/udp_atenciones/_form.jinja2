@@ -17,6 +17,10 @@
     {% call f.form_group(form.udp_tipo_tramite) %}{% endcall %}
     {% call f.form_group(form.distrito) %}{% endcall %}
     {% call f.form_group(form.autoridad) %}{% endcall %}
+    {% call f.form_group(form.cubiculo_id) %}{% endcall %}
+    {% if not cubiculos_disponibles %}
+    <p class="form-text text-warning" role="status">No hay cubículos disponibles en este momento.</p>
+    {% endif %}
     {% if contexto_subsecuente %}
     <section class="mb-3 rounded border border-start border-4 border-primary-subtle bg-body-tertiary p-3 p-md-4"
         aria-label="Nueva atención subsecuente">

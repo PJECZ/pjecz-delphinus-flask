@@ -24,6 +24,10 @@ class UdpAtencion(database.Model, UniversalMixin):
     # Claves foráneas
     autoridad_id: Mapped[Optional[int]] = mapped_column(ForeignKey("autoridades.id"))
     autoridad: Mapped[Optional["Autoridad"]] = relationship(back_populates="udp_atenciones")
+    id_cubiculo: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("udp_cubiculos.id", name="fk_udp_atenciones_cubiculo"), index=True
+    )
+    cubiculo: Mapped[Optional["UdpCubiculo"]] = relationship(back_populates="udp_atenciones")
     udp_persona_id: Mapped[int] = mapped_column(ForeignKey("udp_personas.id"))
     udp_persona: Mapped["UdpPersona"] = relationship(back_populates="udp_atenciones", foreign_keys=[udp_persona_id])
     contraparte_id: Mapped[Optional[int]] = mapped_column(ForeignKey("udp_personas.id"))

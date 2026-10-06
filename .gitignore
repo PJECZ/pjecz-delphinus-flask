@@ -9,6 +9,8 @@
 *.sqlite3-journal
 *.session.sql
 *.sql
+!migrations/002_udp_cubiculos.sql
+!migrations/003_udp_cubiculos_permisos.sql
 *.xls
 *.xlsx
 

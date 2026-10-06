@@ -24,6 +24,14 @@
             {% call f.form_group(form.distrito) %}{% endcall %}
             {% call f.form_group(form.autoridad) %}{% endcall %}
             {% call f.form_group(form.defensor) %}{% endcall %}
+            {% call f.form_group(form.cubiculo_id) %}
+                <div class="form-text">El cubículo actual permanece asignado si conservas la selección. Para cambiarlo, selecciona uno disponible.</div>
+            {% endcall %}
+            {% if not cubiculos_disponibles %}
+                <p class="form-text text-warning" role="status">
+                    {% if udp_atencion.cubiculo %}No hay otros cubículos disponibles en este momento.{% else %}No hay cubículos disponibles en este momento.{% endif %}
+                </p>
+            {% endif %}
             {% call f.form_group(form.udp_contraparte) %}{% endcall %}
             {% call f.form_group(form.nueva_contraparte) %}{% endcall %}
             <div id="nueva-contraparte-campos" class="d-none">

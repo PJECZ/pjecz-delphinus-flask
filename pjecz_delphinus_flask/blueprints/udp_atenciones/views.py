@@ -7,14 +7,14 @@ from datetime import datetime, time
 
 from flask import Blueprint, flash, get_flashed_messages, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 
 from pjecz_delphinus_flask.blueprints.bitacoras.models import Bitacora
 from pjecz_delphinus_flask.blueprints.modulos.models import Modulo
 from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
-from pjecz_delphinus_flask.blueprints.udp_atenciones.forms import UdpAtencionForm
+from pjecz_delphinus_flask.blueprints.udp_atenciones.forms import UdpAtencionForm, UdpAtencionNuevaForm
 from pjecz_delphinus_flask.blueprints.udp_atenciones.models import Estatus, UdpAtencion
 from pjecz_delphinus_flask.blueprints.udp_atenciones.pdf import generar_resumen_pdf
 from pjecz_delphinus_flask.blueprints.udp_atenciones.services import (
@@ -22,6 +22,7 @@ from pjecz_delphinus_flask.blueprints.udp_atenciones.services import (
     asignar_datos_iniciales,
     filtro_participacion,
 )
+from pjecz_delphinus_flask.blueprints.udp_cubiculos.models import UdpCubiculo
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
 from pjecz_delphinus_flask.blueprints.udp_tipos_visitas.models import UdpTipoVisita
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
@@ -34,6 +35,22 @@ MODULO = "UDP ATENCIONES"
 
 udp_atenciones = Blueprint("udp_atenciones", __name__, template_folder="templates")
 ATENCIONES_PAGE_SIZE = 50
+
+
+def cubiculo_asignado_a_otra_atencion(cubiculo_id: int, udp_atencion_id: int | None = None) -> bool:
+    """Verificar si otra atención activa ya ocupa el cubículo."""
+    consulta = (
+        select(UdpAtencion.id)
+        .join(Estatus, UdpAtencion.estatus_id == Estatus.id)
+        .where(
+            UdpAtencion.id_cubiculo == cubiculo_id,
+            Estatus.nombre == "asignado",
+            Estatus.estatus == "A",
+        )
+    )
+    if udp_atencion_id is not None:
+        consulta = consulta.where(UdpAtencion.id != udp_atencion_id)
+    return database.session.execute(consulta.limit(1)).scalar_one_or_none() is not None
 
 
 def get_contraparte(form: UdpAtencionForm) -> UdpPersona | None:
@@ -73,17 +90,130 @@ def save_atencion_contraparte(
     udp_atencion: UdpAtencion,
     contraparte: UdpPersona,
     atencion_origen: UdpAtencion | None = None,
+    cubiculo_id: str | None = None,
+    estatus_anterior: str | None = None,
 ) -> bool:
-    """Guardar una atención y su contraparte en una sola transacción."""
+    """Guardar una atención, su contraparte y el cubículo en una sola transacción."""
+    cubiculo = None
+    cubiculo_anterior = None
+    if cubiculo_id:
+        try:
+            id_seleccionado = int(cubiculo_id)
+        except ValueError:
+            database.session.rollback()
+            flash("Seleccione un cubículo disponible.", "warning")
+            return False
+        if udp_atencion.id is None:
+            cubiculo = database.session.execute(
+                select(UdpCubiculo)
+                .where(UdpCubiculo.id == id_seleccionado, UdpCubiculo.estatus == "A")
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            ).scalar_one_or_none()
+            if (
+                cubiculo is None
+                or cubiculo.estado != "disponible"
+                or cubiculo_asignado_a_otra_atencion(id_seleccionado)
+            ):
+                database.session.rollback()
+                flash("El cubículo seleccionado ya no está disponible. Seleccione otro cubículo.", "warning")
+                return False
+            udp_atencion.id_cubiculo = cubiculo.id
+            cubiculo.estado = "ocupado"
+        elif id_seleccionado != udp_atencion.id_cubiculo:
+            estatus_seleccionado = database.session.get(Estatus, udp_atencion.estatus_id)
+            if estatus_seleccionado is None or estatus_seleccionado.nombre != "asignado":
+                database.session.rollback()
+                flash("Solo se puede cambiar el cubículo de una atención asignada.", "warning")
+                return False
+            ids_cubiculos = {id_seleccionado}
+            if udp_atencion.id_cubiculo is not None:
+                ids_cubiculos.add(udp_atencion.id_cubiculo)
+            cubiculos_bloqueados = database.session.execute(
+                select(UdpCubiculo)
+                .where(UdpCubiculo.id.in_(ids_cubiculos))
+                .order_by(UdpCubiculo.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            ).scalars().all()
+            cubiculos_por_id = {registro.id: registro for registro in cubiculos_bloqueados}
+            cubiculo = cubiculos_por_id.get(id_seleccionado)
+            if cubiculo is None or cubiculo.estatus != "A" or cubiculo.estado != "disponible":
+                database.session.rollback()
+                flash("El nuevo cubículo seleccionado ya no está disponible. Seleccione otro cubículo.", "warning")
+                return False
+            if cubiculo_asignado_a_otra_atencion(cubiculo.id, udp_atencion.id):
+                database.session.rollback()
+                flash("El cubículo seleccionado ya está asignado a otra atención.", "warning")
+                return False
+            if udp_atencion.id_cubiculo is not None:
+                cubiculo_anterior = cubiculos_por_id.get(udp_atencion.id_cubiculo)
+                if cubiculo_anterior is None or cubiculo_anterior.estado != "ocupado":
+                    database.session.rollback()
+                    flash("No fue posible validar el cubículo actual de la atención.", "warning")
+                    return False
+                if cubiculo_asignado_a_otra_atencion(cubiculo_anterior.id, udp_atencion.id):
+                    database.session.rollback()
+                    flash("No fue posible liberar el cubículo actual porque otra atención lo tiene asignado.", "warning")
+                    return False
+                cubiculo_anterior.estado = "disponible"
+            cubiculo.estado = "ocupado"
+            udp_atencion.id_cubiculo = cubiculo.id
+    if udp_atencion.id is not None and udp_atencion.id_cubiculo is not None:
+        estatus_seleccionado = database.session.get(Estatus, udp_atencion.estatus_id)
+        if estatus_seleccionado is not None and estatus_seleccionado.nombre == "asignado":
+            cubiculo_actual = database.session.execute(
+                select(UdpCubiculo)
+                .where(UdpCubiculo.id == udp_atencion.id_cubiculo)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            ).scalar_one_or_none()
+            if (
+                cubiculo_actual is None
+                or cubiculo_actual.estado != "ocupado"
+                or cubiculo_asignado_a_otra_atencion(cubiculo_actual.id, udp_atencion.id)
+            ):
+                database.session.rollback()
+                flash("El cubículo actual no está ocupado correctamente por esta atención.", "warning")
+                return False
+    estatus_actual = database.session.get(Estatus, udp_atencion.estatus_id) if udp_atencion.id is not None else None
+    if (
+        udp_atencion.id is not None
+        and estatus_anterior == "asignado"
+        and estatus_actual is not None
+        and estatus_actual.nombre == "cerrado"
+        and udp_atencion.id_cubiculo is not None
+    ):
+        cubiculo_anterior = database.session.execute(
+            select(UdpCubiculo)
+            .where(UdpCubiculo.id == udp_atencion.id_cubiculo)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        ).scalar_one_or_none()
+        if (
+            cubiculo_anterior is None
+            or cubiculo_anterior.estado != "ocupado"
+            or cubiculo_asignado_a_otra_atencion(cubiculo_anterior.id, udp_atencion.id)
+        ):
+            database.session.rollback()
+            flash("No fue posible cerrar la atención porque el cubículo asociado no está ocupado correctamente.", "warning")
+            return False
+        cubiculo_anterior.estado = "disponible"
     udp_atencion.contraparte = contraparte
     database.session.add_all((udp_atencion, contraparte))
+    if cubiculo is not None:
+        database.session.add(cubiculo)
+    if cubiculo_anterior is not None:
+        database.session.add(cubiculo_anterior)
     try:
         if udp_atencion.id is None:
             asignar_datos_iniciales(udp_atencion, udp_atencion.visita, atencion_origen)
         database.session.commit()
     except (IntegrityError, ValueError) as error:
         database.session.rollback()
-        mensaje = "No fue posible guardar la contraparte. Verifique que la CURP no esté duplicada."
+        mensaje = (
+            "No fue posible guardar la atención. Verifique que la CURP no esté duplicada y que el cubículo siga disponible."
+        )
         if isinstance(error, ValueError):
             mensaje = str(error)
         flash(mensaje, "warning")
@@ -96,6 +226,24 @@ def configurar_estatus(form: UdpAtencionForm) -> None:
     form.estatus_id.choices = [
         (str(estatus.id), estatus.nombre.title()) for estatus in Estatus.query.filter_by(estatus="A").order_by(Estatus.id)
     ]
+
+
+def configurar_cubiculos_disponibles(
+    form: UdpAtencionForm, cubiculo_actual: UdpCubiculo | None = None
+) -> list[UdpCubiculo]:
+    """Cargar cubículos disponibles y conservar el cubículo actual al editar."""
+    cubiculos = (
+        UdpCubiculo.query.filter_by(estatus="A", estado="disponible")
+        .order_by(UdpCubiculo.nombre, UdpCubiculo.id)
+        .all()
+    )
+    opciones = list(cubiculos)
+    if cubiculo_actual is not None and cubiculo_actual not in opciones:
+        opciones.append(cubiculo_actual)
+        opciones.sort(key=lambda registro: (registro.nombre, registro.id))
+    opcion_vacia = "Conservar cubículo actual" if cubiculo_actual is not None else "Sin cubículo"
+    form.cubiculo_id.choices = [("", opcion_vacia)] + [(str(cubiculo.id), cubiculo.nombre) for cubiculo in opciones]
+    return cubiculos
 
 
 def get_defensor(form: UdpAtencionForm) -> Usuario | None:
@@ -135,12 +283,12 @@ def datatable_json():
     consulta = UdpAtencion.query
     filtro = request.form.get("filtro")
     es_defensor = "DEFENSOR" in current_user.get_roles()
-    if filtro == "asignados" and es_defensor:
+    if es_defensor and filtro != "todas":
+        filtro = "asignados"
         consulta = (
-            consulta.join(UdpAtencion.usuario)
-            .join(UdpAtencion.estatus_atencion)
+            consulta.join(UdpAtencion.estatus_atencion)
             .filter(
-                Usuario.email == current_user.email,
+                UdpAtencion.usuario_id == current_user.id,
                 Estatus.nombre == "asignado",
                 Estatus.estatus == "A",
             )
@@ -159,7 +307,18 @@ def datatable_json():
     ordenamiento = [UdpAtencion.id.desc()]
     if filtro == "asignados" and es_defensor:
         ordenamiento = [UdpAtencion.fecha.desc().nullslast(), UdpAtencion.id.desc()]
-    registros = consulta.order_by(*ordenamiento).offset(start).limit(rows_per_page).all()
+    registros = (
+        consulta.options(
+            joinedload(UdpAtencion.cubiculo),
+            joinedload(UdpAtencion.udp_tipo_tramite),
+            joinedload(UdpAtencion.usuario),
+            joinedload(UdpAtencion.estatus_atencion),
+        )
+        .order_by(*ordenamiento)
+        .offset(start)
+        .limit(rows_per_page)
+        .all()
+    )
     total = consulta.count()
     data = []
     for resultado in registros:
@@ -172,7 +331,7 @@ def datatable_json():
                 },
                 "udp_tipo_tramite_nombre": resultado.udp_tipo_tramite.nombre,
                 "usuario_email": resultado.usuario.email,
-                "autoridad_clave": resultado.autoridad.clave if resultado.autoridad and resultado.autoridad.clave else "",
+                "cubiculo_nombre": resultado.cubiculo.nombre if resultado.cubiculo else "Sin asignar",
                 "expediente": resultado.expediente or "",
                 "folio": resultado.folio or "",
                 "tipo_atencion": resultado.visita or "",
@@ -246,8 +405,12 @@ def relacionadas_json():
 @udp_atenciones.route("/udp_atenciones")
 def list_active():
     """Listado de Atenciones activas"""
+    es_defensor = "DEFENSOR" in current_user.get_roles()
     filtro = request.args.get("filtro")
-    if filtro != "asignados" or "DEFENSOR" not in current_user.get_roles():
+    if es_defensor:
+        if filtro not in {"asignados", "todas"}:
+            filtro = "asignados"
+    else:
         filtro = None
     return render_template(
         "udp_atenciones/list.jinja2",
@@ -331,7 +494,8 @@ def new(udp_persona_id=None, udp_atencion_origen_id=None):
         }
     else:
         udp_persona = UdpPersona.query.filter_by(id=udp_persona_id, estatus="A").first_or_404()
-    form = UdpAtencionForm()
+    form = UdpAtencionNuevaForm()
+    cubiculos_disponibles = configurar_cubiculos_disponibles(form)
     if contexto_subsecuente:
         if request.method == "GET":
             form.defensor.data = str(contexto_subsecuente["defensor"].id)
@@ -366,6 +530,7 @@ def new(udp_persona_id=None, udp_atencion_origen_id=None):
             autoridad_por_defecto=autoridad_por_defecto,
             defensor_id=defensor_id,
             contexto_subsecuente=contexto_subsecuente,
+            cubiculos_disponibles=cubiculos_disponibles,
         )
 
     if form.validate_on_submit():
@@ -392,8 +557,13 @@ def new(udp_persona_id=None, udp_atencion_origen_id=None):
             observaciones=safe_string(form.observaciones.data, save_enie=True, max_len=1024),
         )
         atencion_origen = contexto_subsecuente["atencion_origen"] if contexto_subsecuente else None
-        if not save_atencion_contraparte(udp_atencion, contraparte, atencion_origen):
-            return render_form_error("No fue posible guardar la atención. Revise los datos e inténtelo de nuevo.")
+        if not save_atencion_contraparte(udp_atencion, contraparte, atencion_origen, form.cubiculo_id.data):
+            mensaje = "No fue posible guardar la atención. Revise los datos e inténtelo de nuevo."
+            if is_inline_request:
+                mensajes = get_flashed_messages()
+                if mensajes:
+                    mensaje = mensajes[-1]
+            return render_form_error(mensaje)
         bitacora = Bitacora(
             modulo=Modulo.query.filter_by(nombre=MODULO).first(),
             usuario=current_user,
@@ -415,6 +585,7 @@ def new(udp_persona_id=None, udp_atencion_origen_id=None):
         autoridad_por_defecto=autoridad_por_defecto,
         defensor_id=defensor_id,
         contexto_subsecuente=contexto_subsecuente,
+        cubiculos_disponibles=cubiculos_disponibles,
     )
 
 
@@ -429,7 +600,8 @@ def new_fragment():
         return jsonify(error="Seleccione un actor y una contraparte válidos."), 400
     actor = UdpPersona.query.filter_by(id=udp_persona_id, estatus="A").first_or_404()
     contraparte = UdpPersona.query.filter_by(id=contraparte_id, estatus="A").first_or_404()
-    form = UdpAtencionForm()
+    form = UdpAtencionNuevaForm()
+    cubiculos_disponibles = configurar_cubiculos_disponibles(form)
     form.udp_contraparte.choices = [(str(contraparte.id), contraparte.nombre_completo)]
     form.udp_contraparte.data = str(contraparte.id)
     defensor_id = current_user.id if "DEFENSOR" in current_user.get_roles() else None
@@ -442,6 +614,7 @@ def new_fragment():
         distrito_por_defecto=current_user.autoridad.distrito if current_user.autoridad else None,
         autoridad_por_defecto=current_user.autoridad,
         defensor_id=defensor_id,
+        cubiculos_disponibles=cubiculos_disponibles,
     )
 
 
@@ -449,16 +622,32 @@ def new_fragment():
 @permission_required(MODULO, Permiso.MODIFICAR)
 def edit(udp_atencion_id):
     """Editar Atención"""
-    udp_atencion = UdpAtencion.query.get_or_404(udp_atencion_id)
+    udp_atencion = (
+        UdpAtencion.query.filter_by(id=udp_atencion_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+        .first_or_404()
+    )
     form = UdpAtencionForm()
     configurar_estatus(form)
+    cubiculos_disponibles = configurar_cubiculos_disponibles(form, udp_atencion.cubiculo)
     if form.validate_on_submit():
         defensor = get_defensor(form)
         if defensor is None:
-            return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
+            return render_template(
+                "udp_atenciones/edit.jinja2",
+                form=form,
+                udp_atencion=udp_atencion,
+                cubiculos_disponibles=cubiculos_disponibles,
+            )
         contraparte = get_contraparte(form)
         if not contraparte:
-            return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
+            return render_template(
+                "udp_atenciones/edit.jinja2",
+                form=form,
+                udp_atencion=udp_atencion,
+                cubiculos_disponibles=cubiculos_disponibles,
+            )
         udp_atencion.udp_tipo_tramite_id = form.udp_tipo_tramite.data
         udp_atencion.autoridad_id = form.autoridad.data
         udp_atencion.usuario_id = defensor.id
@@ -470,14 +659,30 @@ def edit(udp_atencion_id):
             estatus_id = int(form.estatus_id.data)
         except TypeError, ValueError:
             estatus_id = None
+        estatus_anterior = udp_atencion.estatus_atencion.nombre if udp_atencion.estatus_atencion else None
         estatus = Estatus.query.filter_by(id=estatus_id, estatus="A").first() if estatus_id is not None else None
         if estatus is None:
             flash("El estatus seleccionado no está disponible.", "warning")
-            return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
+            return render_template(
+                "udp_atenciones/edit.jinja2",
+                form=form,
+                udp_atencion=udp_atencion,
+                cubiculos_disponibles=cubiculos_disponibles,
+            )
         udp_atencion.estatus_id = estatus.id
         udp_atencion.observaciones = safe_string(form.observaciones.data, save_enie=True, max_len=1024)
-        if not save_atencion_contraparte(udp_atencion, contraparte):
-            return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
+        if not save_atencion_contraparte(
+            udp_atencion,
+            contraparte,
+            cubiculo_id=form.cubiculo_id.data,
+            estatus_anterior=estatus_anterior,
+        ):
+            return render_template(
+                "udp_atenciones/edit.jinja2",
+                form=form,
+                udp_atencion=udp_atencion,
+                cubiculos_disponibles=cubiculos_disponibles,
+            )
         bitacora = Bitacora(
             modulo=Modulo.query.filter_by(nombre=MODULO).first(),
             usuario=current_user,
@@ -496,8 +701,15 @@ def edit(udp_atencion_id):
     form.expediente.data = udp_atencion.expediente
     form.fecha_siguiente_cita.data = udp_atencion.fecha_siguiente_cita.date() if udp_atencion.fecha_siguiente_cita else None
     form.estatus_id.data = str(udp_atencion.estatus_id) if udp_atencion.estatus_id else None
+    if request.method == "GET" and udp_atencion.id_cubiculo is not None:
+        form.cubiculo_id.data = str(udp_atencion.id_cubiculo)
     form.observaciones.data = udp_atencion.observaciones
-    return render_template("udp_atenciones/edit.jinja2", form=form, udp_atencion=udp_atencion)
+    return render_template(
+        "udp_atenciones/edit.jinja2",
+        form=form,
+        udp_atencion=udp_atencion,
+        cubiculos_disponibles=cubiculos_disponibles,
+    )
 
 
 @udp_atenciones.route("/udp_atenciones/eliminar/<int:udp_atencion_id>")

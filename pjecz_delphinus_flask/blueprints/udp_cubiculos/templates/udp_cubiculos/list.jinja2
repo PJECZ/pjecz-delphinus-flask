@@ -1,0 +1,103 @@
+{% extends 'layouts/app.jinja2' %}
+{% import 'macros/list.jinja2' as list %}
+{% import 'macros/topbar.jinja2' as topbar %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block topbar_actions %}
+    {% call topbar.page_buttons(titulo) %}
+        {% if current_user.can_admin('UDP CUBICULOS') %}
+            {% if estatus == 'A' %}{{ topbar.button_list_inactive('Inactivos', url_for('udp_cubiculos.list_inactive')) }}{% endif %}
+            {% if estatus == 'B' %}{{ topbar.button_list_active('Activos', url_for('udp_cubiculos.list_active')) }}{% endif %}
+        {% endif %}
+        {% if current_user.can_insert('UDP CUBICULOS') %}
+            {{ topbar.button_new('Nuevo cubículo', url_for('udp_cubiculos.new')) }}
+        {% endif %}
+    {% endcall %}
+{% endblock %}
+
+{% block content %}
+    {% call list.card() %}
+        <div class="row">
+            <div class="col">
+                <form class="row g-2 mb-3" id="filtradorForm" onsubmit="filtrosCubiculos.buscar(); return false;">
+                    <div class="col-12 col-md-4">
+                        <div class="form-floating">
+                            <input id="filtroUdpCubiculoNombre" type="search" class="form-control" aria-label="Cubículo" maxlength="64" style="text-transform: uppercase;">
+                            <label for="filtroUdpCubiculoNombre">Cubículo</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-8 text-md-end">
+                        <button title="Buscar" class="btn btn-primary btn-lg" onclick="filtrosCubiculos.buscar(); return false;" id="button-buscar"><span class="mdi mdi-magnify"></span></button>
+                        <button title="Limpiar" class="btn btn-warning btn-lg" type="reset" onclick="filtrosCubiculos.limpiar();" id="button-limpiar"><span class="mdi mdi-broom"></span></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table id="udp_cubiculos_datatable" class="table {% if estatus == 'B'%}table-dark{% endif %} display nowrap w-100">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cubículo</th>
+                        <th>Estatus</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    {% endcall %}
+{% endblock %}
+
+{% block custom_javascript %}
+    <script src="/static/js/datatables-constructor.js"></script>
+    <script src="/static/js/datatables-filtros.js"></script>
+    <script>
+        const constructorDataTable = new ConfigDataTable('{{ csrf_token() }}');
+        let configDTCubiculos = constructorDataTable.config();
+        configDTCubiculos['ajax']['url'] = "{{ url_for('udp_cubiculos.datatable_json') }}";
+        configDTCubiculos['ajax']['data'] = {{ filtros }};
+        configDTCubiculos['columns'] = [
+            { data: 'id' },
+            { data: 'detalle' },
+            { data: 'estado' },
+            { data: 'acciones' }
+        ];
+        configDTCubiculos['columnDefs'] = [
+            {
+                targets: 1,
+                data: null,
+                render: function(data, type) {
+                    if (type !== 'display') return data.nombre;
+                    const nombre = $('<div>').text(data.nombre).html();
+                    return '<a href="' + data.url + '">' + nombre + '</a>';
+                }
+            },
+            {
+                targets: 2,
+                render: function(data, type) {
+                    if (type !== 'display') return data;
+                    if (data === 'disponible') return '<span class="badge text-bg-success">Disponible</span>';
+                    if (data === 'ocupado') return '<span class="badge text-bg-warning">Ocupado</span>';
+                    return $('<div>').text(data).html();
+                }
+            },
+            {
+                targets: 3,
+                orderable: false,
+                searchable: false,
+                render: function(data, type) {
+                    if (type !== 'display') return '';
+                    let actions = '<a class="btn btn-sm btn-outline-primary me-1" href="' + data.detalle_url + '">Ver</a>';
+                    if (data.editar_url) {
+                        actions += '<a class="btn btn-sm btn-outline-secondary" href="' + data.editar_url + '">Editar</a>';
+                    }
+                    return actions;
+                }
+            }
+        ];
+        const filtrosCubiculos = new FiltrosDataTable('#udp_cubiculos_datatable', configDTCubiculos);
+        filtrosCubiculos.agregarInput('filtroUdpCubiculoNombre', 'nombre');
+        filtrosCubiculos.precargar();
+    </script>
+{% endblock %}

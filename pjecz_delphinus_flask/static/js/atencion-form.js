@@ -6,11 +6,17 @@
 
     const selectedPeople = { actor: null, contraparte: null };
     const catalogRequests = new Map();
+    const registrationRequests = new WeakMap();
     let attentionRequest = 0;
     let attentionFormRequest = 0;
 
     function getPanel(element) {
         return element.closest('[data-person-role]');
+    }
+
+    function closeRegistration(panel) {
+        registrationRequests.set(panel, (registrationRequests.get(panel) || 0) + 1);
+        panel.querySelector('[data-person-registration]')?.classList.add('d-none');
     }
 
     function showPanelMessage(panel, message, kind = 'muted') {
@@ -66,6 +72,7 @@
     }
 
     async function searchPeople(panel, page = 1) {
+        closeRegistration(panel);
         const searchButton = panel.querySelector('[data-action="search"]');
         if (searchButton.disabled) {
             return;
@@ -147,11 +154,19 @@
         module.querySelectorAll('[data-attention-state]').forEach(element => {
             element.hidden = element.dataset.attentionState !== state;
         });
+        const related = module.querySelector('.atencion-related');
+        related.toggleAttribute('aria-busy', state === 'loading');
         const results = module.querySelector('[data-attention-results]');
         if (state !== 'results') {
             results.replaceChildren();
             results.hidden = true;
         }
+    }
+
+    function clearAttentionSaveStatus() {
+        const status = module.querySelector('[data-attention-save-status]');
+        status.hidden = true;
+        status.textContent = '';
     }
 
     function appendAttention(atencion) {
@@ -180,11 +195,22 @@
     async function refreshAttentions() {
         const requestId = ++attentionRequest;
         const actor = selectedPeople.actor;
+        console.log('Selected actor:', actor);
         const contraparte = selectedPeople.contraparte;
+        console.log('Selected contraparte:', contraparte);
+        const heading = module.querySelector('#atenciones-relacionadas-title');
         const results = module.querySelector('[data-attention-results]');
         const params = new URLSearchParams();
         if (actor) params.set('udp_persona_id', actor.id);
         if (contraparte) params.set('contraparte_id', contraparte.id);
+
+        heading.textContent = actor && contraparte
+            ? 'Atenciones entre ' + actor.nombre_completo + ' - ' + contraparte.nombre_completo
+            : actor
+                ? 'Atenciones relacionadas de ' + actor.nombre_completo
+                : contraparte
+                    ? 'Atenciones relacionadas de ' + contraparte.nombre_completo
+                    : 'Atenciones relacionadas';
 
         if (!actor && !contraparte) {
             setAttentionState('initial');
@@ -394,6 +420,8 @@
         if (!form) {
             return;
         }
+        const requestId = (registrationRequests.get(panel) || 0) + 1;
+        registrationRequests.set(panel, requestId);
         ['nombres', 'apellido_primero', 'apellido_segundo'].forEach(name => {
             const source = panel.querySelector(`[data-search-field="${name}"]`);
             const target = form.elements.namedItem(name);
@@ -409,10 +437,16 @@
                 loadCatalog(form.elements.udp_sexo, module.dataset.sexUrl),
                 loadCatalog(form.elements.udp_tipo_condicion, module.dataset.conditionUrl),
             ]);
+            if (registrationRequests.get(panel) !== requestId) {
+                return;
+            }
             form.classList.remove('d-none');
             feedback.textContent = '';
             form.querySelector('[name="nombres"]').focus();
         } catch (error) {
+            if (registrationRequests.get(panel) !== requestId) {
+                return;
+            }
             feedback.className = 'small mt-2 mb-0 text-danger';
             feedback.textContent = error.message;
         } finally {
@@ -447,6 +481,7 @@
             }
             const role = panel.dataset.personRole;
             selectedPeople[role] = { id: data.persona.id, nombre_completo: data.persona.nombre_completo };
+            clearAttentionSaveStatus();
             closeNewAttention();
             module.querySelector('[data-new-attention-content]').replaceChildren();
             updateSelectedPerson(role);
@@ -523,10 +558,11 @@
             case 'select-person': {
                 const role = panel.dataset.personRole;
                 selectedPeople[role] = { id: button.dataset.personId, nombre_completo: button.dataset.personName };
+                clearAttentionSaveStatus();
                 closeNewAttention();
                 module.querySelector('[data-new-attention-content]').replaceChildren();
                 updateSelectedPerson(role);
-                panel.querySelector('[data-person-registration]')?.classList.add('d-none');
+                closeRegistration(panel);
                 showPanelMessage(panel, 'Persona seleccionada.', 'success');
                 refreshAttentions();
                 break;
@@ -534,6 +570,7 @@
             case 'clear': {
                 const role = panel.dataset.personRole;
                 selectedPeople[role] = null;
+                clearAttentionSaveStatus();
                 closeNewAttention();
                 module.querySelector('[data-new-attention-content]').replaceChildren();
                 updateSelectedPerson(role);
@@ -545,7 +582,7 @@
                 openRegistration(panel);
                 break;
             case 'cancel-register':
-                panel.querySelector('[data-person-registration]').classList.add('d-none');
+                closeRegistration(panel);
                 panel.querySelector('[data-action="register"]').focus();
                 break;
             case 'new-attention':

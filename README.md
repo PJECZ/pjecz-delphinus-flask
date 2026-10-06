@@ -129,4 +129,11 @@ then
     echo "   arrancar = flask run --port=5000"
     echo
 fi
+# importar desde seed
+# docker compose exec app python cli/app.py db reiniciar
+
+#nueva contraseña
+#docker compose exec app python cli/app.py usuarios nueva-contrasena correodelusuario@pjecz.gob.mx
+
+
 ```

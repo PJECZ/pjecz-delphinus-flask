@@ -16,6 +16,7 @@ class UdpAtencionForm(FlaskForm):
     distrito = SelectField("Distrito", validators=[DataRequired()], choices=None, validate_choice=False)
     autoridad = SelectField("Autoridad", validators=[DataRequired()], choices=None, validate_choice=False)
     defensor = SelectField("Defensor", validators=[DataRequired()], choices=None, validate_choice=False)
+    cubiculo_id = SelectField("Asignar cubículo", validators=[Optional()], choices=None, validate_choice=False)
     visita = SelectField("Tipo de atención", validators=[Optional()], choices=None, validate_choice=False)
     udp_contraparte = SelectField("Contraparte", validators=[Optional()], choices=None, validate_choice=False)
     busqueda_nombres = StringField("Nombre(s)", validators=[Optional(), Length(max=256)])
@@ -36,3 +37,9 @@ class UdpAtencionForm(FlaskForm):
     estatus_id = SelectField("Estatus", validators=[Optional()], choices=None, validate_choice=False)
     observaciones = TextAreaField("Observaciones", validators=[Optional(), Length(max=1024)])
     guardar = SubmitField("Guardar")
+
+
+class UdpAtencionNuevaForm(UdpAtencionForm):
+    """Formulario para crear una atención, que requiere un cubículo."""
+
+    cubiculo_id = SelectField("Asignar cubículo", validators=[DataRequired()], choices=None, validate_choice=False)
