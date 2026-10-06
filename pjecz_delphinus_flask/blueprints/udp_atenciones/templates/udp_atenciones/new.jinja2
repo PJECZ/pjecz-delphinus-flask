@@ -4,92 +4,354 @@
 
 {% block title %}Nueva Atención para {{ udp_persona.nombre_completo }}{% endblock %}
 
+{% block custom_head %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://storage.googleapis.com/pjecz-informatica/static/css/select2.css" rel="stylesheet" />
+{% endblock %}
+
 {% block topbar_actions %}
-    {{ topbar.page('Nueva Atención para ' + udp_persona.nombre_completo) }}
+{{ topbar.page('Nueva Atención para ' + udp_persona.nombre_completo) }}
 {% endblock %}
 
 {% block content %}
-    {% call f.card() %}
-        {% set form_kwargs = {'udp_persona_id': udp_persona.id} %}
-        {% call f.form_tag('udp_atenciones.new', fid='atencion_form', **form_kwargs) %}
-            {% call f.form_group(form.udp_tipo_tramite) %}{% endcall %}
-            {% call f.form_group(form.distrito) %}{% endcall %}
-            {% call f.form_group(form.autoridad) %}{% endcall %}
-            {% call f.form_group(form.defensor) %}{% endcall %}
-            {% call f.form_group(form.expediente) %}{% endcall %}
-            {% call f.form_group(form.observaciones, rows="8") %}{% endcall %}
-            {% call f.form_group(form.guardar) %}{% endcall %}
-        {% endcall %}
-    {% endcall %}
+{% include 'udp_atenciones/_form.jinja2' %}
 {% endblock %}
 
 {% block custom_javascript %}
-    <!-- Select udp_tipo_tramite -->
-    <script>
-        const udpTipoTramiteSelect = document.getElementById('udp_tipo_tramite');
-        // Cargar las opciones del select udp_tipo_tramite
-        fetch("{{ url_for('udp_tipos_tramites.select_json') }}")
-            .then(response => response.json())
-            .then(data => {
-                data.results.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.text = item.text;
-                    udpTipoTramiteSelect.appendChild(option);
-                });
+<!-- Select udp_tipo_tramite -->
+<script>
+    const udpTipoTramiteSelect = document.getElementById('udp_tipo_tramite');
+    const tipoTramitePorDefectoId = {{ (contexto_subsecuente.udp_tipo_tramite_id if contexto_subsecuente else none)| tojson }};
+    const esSubsecuente = {{ 'true' if contexto_subsecuente else 'false' }};
+    if (esSubsecuente) {
+        const opcionVacia = document.createElement('option');
+        opcionVacia.value = '';
+        opcionVacia.text = 'Seleccione un tipo de trámite';
+        opcionVacia.selected = true;
+        udpTipoTramiteSelect.appendChild(opcionVacia);
+    }
+    // Cargar las opciones del select udp_tipo_tramite
+    fetch("{{ url_for('udp_tipos_tramites.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                udpTipoTramiteSelect.appendChild(option);
+                if (tipoTramitePorDefectoId !== null && String(item.id) === String(tipoTramitePorDefectoId)) {
+                    udpTipoTramiteSelect.value = String(item.id);
+                }
             });
-    </script>
-    <!-- Select Distrito-Autoridad -->
-    <script>
-        const distritoSelect = document.getElementById('distrito');
-        const autoridadSelect = document.getElementById('autoridad');
-        // Cargar las opciones del select distrito
-        fetch("{{ url_for('distritos.select_json') }}")
-            .then(response => response.json())
-            .then(data => {
-                data.results.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.id;
-                    option.text = item.text;
-                    distritoSelect.appendChild(option);
-                });
-                distritoSelect.value = {{ distrito_por_defecto.id }}; // Seleccionar el distrito por defecto
-                distritoSelect.dispatchEvent(new Event('change'));
-            });
-        // Cargar las opciones del select autoridad, si el distrito cambia
-        distritoSelect.addEventListener('change', () => {
-            fetch(`{{ url_for('autoridades.select_json') }}?distrito_id=${distritoSelect.value}`)
-                .then(response => response.json())
-                .then(data => {
-                    autoridadSelect.innerHTML = '';
-                    data.results.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.id;
-                        option.text = item.text;
-                        autoridadSelect.appendChild(option);
-                    });
-                    if (distritoSelect.value == {{ distrito_por_defecto.id }}) {
-                        autoridadSelect.value = {{ autoridad_por_defecto.id }}; // Seleccionar la autoridad por defecto
-                    }
-                });
         });
-    </script>
-    <!-- Select Defensor -->
-    <script>
-        const defensorSelect = document.getElementById('defensor');
-        // Cargar las opciones del select defensor
-        fetch("{{ url_for('usuarios.select_json', rol='DEFENSOR') }}")
+</script>
+<!-- Select Distrito-Autoridad -->
+<script>
+    const distritoSelect = document.getElementById('distrito');
+    const autoridadSelect = document.getElementById('autoridad');
+    const distritoPorDefectoId = {{ (distrito_por_defecto.id if distrito_por_defecto else none)| tojson }};
+    const autoridadPorDefectoId = {{ (autoridad_por_defecto.id if autoridad_por_defecto else none)| tojson }};
+    if (esSubsecuente) {
+        const opcionVacia = document.createElement('option');
+        opcionVacia.value = '';
+        opcionVacia.text = 'Seleccione un distrito';
+        opcionVacia.selected = true;
+        distritoSelect.appendChild(opcionVacia);
+    }
+    // Cargar las opciones del select distrito
+    fetch("{{ url_for('distritos.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                distritoSelect.appendChild(option);
+            });
+            const distritoDisponible = data.results.some(item => String(item.id) === String(distritoPorDefectoId));
+            distritoSelect.value = distritoPorDefectoId !== null && distritoDisponible
+                ? String(distritoPorDefectoId)
+                : '';
+            distritoSelect.dispatchEvent(new Event('change'));
+        });
+    // Cargar las opciones del select autoridad, si el distrito cambia
+    distritoSelect.addEventListener('change', () => {
+        fetch(`{{ url_for('autoridades.select_json') }}?distrito_id=${distritoSelect.value}`)
             .then(response => response.json())
             .then(data => {
+                autoridadSelect.innerHTML = '';
                 data.results.forEach(item => {
                     const option = document.createElement('option');
                     option.value = item.id;
                     option.text = item.text;
-                    defensorSelect.appendChild(option);
+                    autoridadSelect.appendChild(option);
                 });
-                {% if defensor_id %}
-                    defensorSelect.value = {{ defensor_id }};
-                {% endif %}
+                const autoridadDisponible = data.results.some(item => String(item.id) === String(autoridadPorDefectoId));
+                if (distritoSelect.value === String(distritoPorDefectoId)) {
+                    autoridadSelect.value = autoridadPorDefectoId !== null && autoridadDisponible
+                        ? String(autoridadPorDefectoId)
+                        : '';
+                }
             });
-    </script>
+    });
+</script>
+{% if not contexto_subsecuente %}
+<!-- Select Contraparte -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    const nuevaContraparte = document.getElementById('nueva_contraparte');
+    const nuevaContraparteCampos = document.getElementById('nueva-contraparte-campos');
+    const contraparteBusquedaCampos = document.getElementById('contraparte-busqueda-campos');
+    const mostrarNuevaContraparte = document.getElementById('mostrar-nueva-contraparte');
+    const contraparteAltaAyuda = document.getElementById('contraparte-alta-ayuda');
+    const modoContraparteEtiqueta = document.getElementById('modo-contraparte-etiqueta');
+    const modoContraparteIcono = document.getElementById('modo-contraparte-icono');
+    const contraparteSelect = $('#udp_contraparte');
+    const contraparteSearchInputs = [
+        document.getElementById('busqueda_nombres'),
+        document.getElementById('busqueda_apellido_primero'),
+        document.getElementById('busqueda_apellido_segundo'),
+        document.getElementById('busqueda_curp')
+    ];
+    const buscarContraparte = document.getElementById('buscar-contraparte');
+    const buscarContraparteEtiqueta = document.getElementById('buscar-contraparte-etiqueta');
+    const buscarContraparteIcono = document.getElementById('buscar-contraparte-icono');
+    const buscarContraparteSpinner = document.getElementById('buscar-contraparte-spinner');
+    const contraparteSearchFeedback = document.getElementById('contraparte-search-feedback');
+    const contraparteSearchUrl = "{{ url_for('udp_personas.select_json') }}";
+    let contraparteSelectOpen = false;
+    let contraparteOpenFromSearchButton = false;
+
+    function setContraparteSearchLoading(isLoading) {
+        buscarContraparte.disabled = isLoading;
+        buscarContraparte.setAttribute('aria-busy', String(isLoading));
+        buscarContraparteEtiqueta.textContent = isLoading ? 'Buscando...' : 'Buscar contraparte';
+        buscarContraparteIcono.classList.toggle('d-none', isLoading);
+        buscarContraparteSpinner.classList.toggle('d-none', !isLoading);
+    }
+
+    function isContraparteSearchRequest(settings) {
+        const requestUrl = new URL(settings.url, window.location.href);
+        const searchUrl = new URL(contraparteSearchUrl, window.location.href);
+        return requestUrl.pathname === searchUrl.pathname;
+    }
+
+    function actualizarFormularioContraparte() {
+        if (nuevaContraparte.checked && contraparteSelectOpen) {
+            contraparteSelect.select2('close');
+        }
+        nuevaContraparteCampos.classList.toggle('d-none', !nuevaContraparte.checked);
+        contraparteBusquedaCampos.classList.toggle('d-none', nuevaContraparte.checked);
+        mostrarNuevaContraparte.setAttribute('aria-expanded', String(nuevaContraparte.checked));
+        mostrarNuevaContraparte.classList.toggle('btn-outline-success', !nuevaContraparte.checked);
+        mostrarNuevaContraparte.classList.toggle('btn-outline-secondary', nuevaContraparte.checked);
+        modoContraparteEtiqueta.textContent = nuevaContraparte.checked ? 'Volver a buscar' : 'Registrar nueva contraparte';
+        modoContraparteIcono.classList.toggle('mdi-account-plus-outline', !nuevaContraparte.checked);
+        modoContraparteIcono.classList.toggle('mdi-arrow-left', nuevaContraparte.checked);
+        contraparteAltaAyuda.textContent = nuevaContraparte.checked
+            ? '¿Quieres elegir una contraparte existente?'
+            : '¿No encuentras a la persona?';
+        contraparteSelect.prop('disabled', nuevaContraparte.checked);
+        contraparteSearchInputs.forEach(input => {
+            input.disabled = nuevaContraparte.checked;
+        });
+    }
+
+    function cambiarModoContraparte(registrarNueva) {
+        nuevaContraparte.checked = registrarNueva;
+        nuevaContraparte.dispatchEvent(new Event('change', { bubbles: true }));
+        if (registrarNueva) {
+            document.getElementById('contraparte_nombres').focus();
+            return;
+        }
+        mostrarNuevaContraparte.focus();
+    }
+
+    function normalizarTextoHighlight(texto) {
+        return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    }
+
+    function agregarTextoConHighlight(elemento, texto, criterio) {
+        const textoNormalizado = normalizarTextoHighlight(texto);
+        const criterioNormalizado = normalizarTextoHighlight(criterio.trim());
+        if (!criterioNormalizado) {
+            elemento.append(document.createTextNode(texto));
+            return;
+        }
+
+        let posicion = 0;
+        let inicioCoincidencia = textoNormalizado.indexOf(criterioNormalizado, posicion);
+        while (inicioCoincidencia !== -1) {
+            elemento.append(document.createTextNode(texto.slice(posicion, inicioCoincidencia)));
+            const coincidencia = document.createElement('strong');
+            coincidencia.textContent = texto.slice(inicioCoincidencia, inicioCoincidencia + criterioNormalizado.length);
+            elemento.append(coincidencia);
+            posicion = inicioCoincidencia + criterioNormalizado.length;
+            inicioCoincidencia = textoNormalizado.indexOf(criterioNormalizado, posicion);
+        }
+        elemento.append(document.createTextNode(texto.slice(posicion)));
+    }
+
+    function formatContraparteResult(resultado) {
+        if (!resultado.id) {
+            return resultado.text;
+        }
+
+        const criterios = resultado.search_terms || {};
+        const nombreCompleto = document.createElement('span');
+        const camposNombre = [
+            [resultado.apellido_primero, criterios.apellido_primero || ''],
+            [resultado.apellido_segundo, criterios.apellido_segundo || ''],
+            [resultado.nombres, criterios.nombres || '']
+        ].filter(([valor]) => valor);
+        camposNombre.forEach(([valor, criterio], indice) => {
+            if (indice > 0) {
+                nombreCompleto.append(document.createTextNode(' '));
+            }
+            agregarTextoConHighlight(nombreCompleto, valor, criterio);
+        });
+
+        const resultadoElement = document.createElement('span');
+        resultadoElement.append(nombreCompleto, document.createTextNode(' - '));
+        agregarTextoConHighlight(resultadoElement, resultado.curp || 'Sin CURP', criterios.curp || '');
+        return $(resultadoElement);
+    }
+
+    function ejecutarBusquedaContraparte() {
+        if (buscarContraparte.disabled) {
+            return;
+        }
+        if (!contraparteSearchInputs.some(input => input.value.trim())) {
+            contraparteSearchFeedback.textContent = 'Ingresa al menos un criterio para buscar.';
+            contraparteSearchFeedback.classList.remove('d-none');
+            contraparteSearchInputs.find(input => input.value.trim() === '')?.focus();
+            return;
+        }
+
+        contraparteSearchFeedback.textContent = '';
+        contraparteSearchFeedback.classList.add('d-none');
+        contraparteOpenFromSearchButton = true;
+        if (contraparteSelectOpen) {
+            contraparteSelect.select2('close');
+        }
+        contraparteSelect.select2('open');
+        contraparteOpenFromSearchButton = false;
+    }
+
+    contraparteSelect.select2({
+        placeholder: 'Seleccionar contraparte',
+        allowClear: true,
+        minimumInputLength: 0,
+        minimumResultsForSearch: Infinity,
+        templateResult: formatContraparteResult,
+        ajax: {
+            url: "{{ url_for('udp_personas.select_json') }}",
+            dataType: 'json',
+            data: () => ({
+                nombres: contraparteSearchInputs[0].value,
+                apellido_primero: contraparteSearchInputs[1].value,
+                apellido_segundo: contraparteSearchInputs[2].value,
+                curp: contraparteSearchInputs[3].value
+            })
+        }
+    });
+    contraparteSelect.on('select2:opening', event => {
+        if (!contraparteOpenFromSearchButton) {
+            event.preventDefault();
+        }
+    });
+    contraparteSelect.on('select2:open', () => {
+        contraparteSelectOpen = true;
+    });
+    contraparteSelect.on('select2:close', () => {
+        contraparteSelectOpen = false;
+    });
+    contraparteSearchInputs.forEach(input => {
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+            }
+        });
+    });
+    buscarContraparte.addEventListener('click', ejecutarBusquedaContraparte);
+    $(document).on('ajaxSend.contraparteSearch', (event, jqXHR, settings) => {
+        if (isContraparteSearchRequest(settings)) {
+            setContraparteSearchLoading(true);
+        }
+    });
+    $(document).on('ajaxComplete.contraparteSearch', (event, jqXHR, settings) => {
+        if (isContraparteSearchRequest(settings)) {
+            setContraparteSearchLoading(false);
+        }
+    });
+    nuevaContraparte.addEventListener('change', actualizarFormularioContraparte);
+    mostrarNuevaContraparte.addEventListener('click', () => cambiarModoContraparte(!nuevaContraparte.checked));
+    actualizarFormularioContraparte();
+    fetch("{{ url_for('udp_sexos.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            const sexoSelect = document.getElementById('contraparte_udp_sexo');
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                sexoSelect.appendChild(option);
+            });
+        });
+    fetch("{{ url_for('udp_tipos_condiciones.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            const condicionSelect = document.getElementById('contraparte_udp_tipo_condicion');
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                condicionSelect.appendChild(option);
+            });
+        });
+</script>
+<!-- Select tipo de atención -->
+<script>
+    const visitaSelect = document.getElementById('visita');
+    fetch("{{ url_for('udp_tipos_visitas.select_json') }}")
+        .then(response => response.json())
+        .then(data => {
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.text;
+                option.text = item.text;
+                visitaSelect.appendChild(option);
+            });
+        });
+</script>
+{% endif %}
+<!-- Select Defensor -->
+<script>
+    const defensorSelect = document.getElementById('defensor');
+    const defensorId = {{ defensor_id| tojson }};
+    // Cargar las opciones del select defensor
+    fetch("{{ url_for('usuarios.select_json', rol='DEFENSOR') }}")
+        .then(response => response.json())
+        .then(data => {
+            data.results.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.text = item.text;
+                defensorSelect.appendChild(option);
+            });
+            if (defensorId !== null) {
+                defensorSelect.value = String(defensorId);
+            }
+        });
+</script>
+{% if contexto_subsecuente %}
+<script>
+    const subsecuenteForm = document.getElementById('atencion_form');
+    const subsecuenteSubmit = document.getElementById('guardar');
+    subsecuenteForm.addEventListener('submit', () => {
+        subsecuenteSubmit.disabled = true;
+        subsecuenteSubmit.value = 'Guardando...';
+    });
+</script>
+{% endif %}
 {% endblock %}

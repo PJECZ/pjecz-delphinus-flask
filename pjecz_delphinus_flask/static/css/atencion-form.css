@@ -1,0 +1,272 @@
+#atencionFormContainer {
+    margin-block: 1.5rem 2.5rem;
+}
+
+#atencionFormContainer .atencion-module {
+    --atencion-actor: #0f766e;
+    --atencion-contraparte: #a16207;
+    overflow: hidden;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    background: var(--bs-body-bg);
+}
+
+#atencionFormContainer .atencion-module__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.5rem 1.75rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+}
+
+#atencionFormContainer .atencion-module__eyebrow {
+    color: var(--bs-secondary-color);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+#atencionFormContainer .atencion-module__header-icon {
+    flex: 0 0 auto;
+    color: var(--bs-primary);
+    font-size: 2rem;
+}
+
+#atencionFormContainer .atencion-module__header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 1rem;
+}
+
+#atencionFormContainer .atencion-module__help {
+    white-space: nowrap;
+}
+
+#atencionFormContainer .atencion-module__body {
+    padding: 1.5rem 1.75rem 1.75rem;
+}
+
+#atencionFormContainer .atencion-person-panel {
+    height: 100%;
+    padding: 1.25rem;
+    border: 1px solid var(--bs-border-color);
+    border-top: 3px solid var(--atencion-role-color);
+    border-radius: 0.375rem;
+    background: var(--bs-body-bg);
+}
+
+#atencionFormContainer .atencion-person-panel--actor {
+    --atencion-role-color: var(--atencion-actor);
+}
+
+#atencionFormContainer .atencion-person-panel--contraparte {
+    --atencion-role-color: var(--atencion-contraparte);
+}
+
+#atencionFormContainer .atencion-person-panel__heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    color: var(--atencion-role-color);
+}
+
+#atencionFormContainer .atencion-person-panel__heading > .mdi {
+    padding-top: 0.1rem;
+    font-size: 1.4rem;
+}
+
+#atencionFormContainer .atencion-person-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+#atencionFormContainer .atencion-person-panel__registration {
+    position: relative;
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--atencion-role-color) 32%, var(--bs-border-color));
+    border-left: 4px solid var(--atencion-role-color);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--atencion-role-color) 4%, var(--bs-body-bg));
+    box-shadow: 0 0.35rem 1.1rem color-mix(in srgb, var(--bs-emphasis-color) 7%, transparent);
+}
+
+#atencionFormContainer .atencion-person-panel__registration:not(.d-none) {
+    animation: atencion-registration-enter 180ms ease-out;
+}
+
+#atencionFormContainer .atencion-person-panel__registration-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+
+#atencionFormContainer .atencion-person-panel__registration-heading > .mdi {
+    display: grid;
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--atencion-role-color) 12%, var(--bs-body-bg));
+    color: var(--atencion-role-color);
+    font-size: 1.35rem;
+}
+
+#atencionFormContainer .atencion-person-panel__registration-eyebrow {
+    color: var(--atencion-role-color);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+}
+
+#atencionFormContainer .atencion-person-panel__registration .form-control:focus,
+#atencionFormContainer .atencion-person-panel__registration .form-select:focus {
+    border-color: var(--atencion-role-color);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--atencion-role-color) 20%, transparent);
+}
+
+#atencionFormContainer .atencion-person-panel__selected {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 3.25rem;
+    margin-top: 1rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px dashed var(--bs-border-color);
+    border-radius: 0.375rem;
+    color: var(--bs-secondary-color);
+}
+
+#atencionFormContainer .atencion-person-panel__selected > .mdi {
+    flex: 0 0 auto;
+    font-size: 1.25rem;
+}
+
+#atencionFormContainer .atencion-person-panel__selected--active {
+    border-style: solid;
+    border-color: var(--atencion-role-color);
+    background: var(--bs-tertiary-bg);
+    border-color: color-mix(in srgb, var(--atencion-role-color) 35%, var(--bs-border-color));
+    background: color-mix(in srgb, var(--atencion-role-color) 7%, var(--bs-body-bg));
+    color: var(--bs-body-color);
+}
+
+#atencionFormContainer .atencion-person-panel__selected--active > .mdi {
+    color: var(--atencion-role-color);
+}
+
+#atencionFormContainer .atencion-person-panel__results {
+    min-height: 3rem;
+    max-height: 15rem;
+    margin-top: 0.75rem;
+    overflow-y: auto;
+}
+
+#atencionFormContainer .atencion-related {
+    margin-top: 1.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+#atencionFormContainer .atencion-related__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+#atencionFormContainer .atencion-related__heading > .mdi {
+    color: var(--bs-secondary-color);
+    font-size: 1.5rem;
+}
+
+#atencionFormContainer .atencion-related__state {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.375rem;
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary-color);
+}
+
+#atencionFormContainer .atencion-related__state > .mdi {
+    flex: 0 0 auto;
+    font-size: 1.35rem;
+}
+
+#atencionFormContainer .atencion-related__state--empty-pair {
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: color-mix(in srgb, #a16207 8%, var(--bs-body-bg));
+    color: var(--bs-body-color);
+}
+
+#atencionFormContainer .atencion-related__list {
+    max-height: 24rem;
+    overflow-y: auto;
+}
+
+#atencionFormContainer [data-action]:focus-visible {
+    outline: 3px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+@media (max-width: 575.98px) {
+    #atencionFormContainer .atencion-module__header,
+    #atencionFormContainer .atencion-module__body {
+        padding-inline: 1rem;
+    }
+
+    #atencionFormContainer .atencion-module__header {
+        padding-block: 1.25rem;
+    }
+
+    #atencionFormContainer .atencion-module__header-actions {
+        gap: 0.5rem;
+    }
+
+    #atencionFormContainer .atencion-module__header-icon {
+        display: none;
+    }
+
+    #atencionFormContainer .atencion-person-panel {
+        padding: 1rem;
+    }
+
+    #atencionFormContainer .atencion-person-panel__registration {
+        padding: 1rem;
+    }
+
+    #atencionFormContainer .atencion-related__state--empty-pair {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@keyframes atencion-registration-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.35rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #atencionFormContainer .atencion-person-panel__registration:not(.d-none) {
+        animation: none;
+    }
+}

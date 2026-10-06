@@ -10,6 +10,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from rich.console import Console
+from rich.progress import Progress
+from sqlalchemy import text
 from typer import Typer
 
 from pjecz_delphinus_flask.app import create_app
@@ -20,15 +22,19 @@ from pjecz_delphinus_flask.blueprints.modulos.models import Modulo
 from pjecz_delphinus_flask.blueprints.municipios.models import Municipio
 from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
 from pjecz_delphinus_flask.blueprints.roles.models import Rol
+from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
+from pjecz_delphinus_flask.blueprints.udp_atenciones.models import Estatus, UdpAtencion
 from pjecz_delphinus_flask.blueprints.udp_sexos.models import UdpSexo
 from pjecz_delphinus_flask.blueprints.udp_tipos_condiciones.models import UdpTipoCondicion
 from pjecz_delphinus_flask.blueprints.udp_tipos_tramites.models import UdpTipoTramite
 from pjecz_delphinus_flask.blueprints.udp_tipos_visitas.models import UdpTipoVisita
+from pjecz_delphinus_flask.blueprints.udp_ingresos.models import UdpIngreso
+from pjecz_delphinus_flask.blueprints.udp_domicilios.models import UdpDomicilio
 from pjecz_delphinus_flask.blueprints.usuarios.models import Usuario
 from pjecz_delphinus_flask.blueprints.usuarios_roles.models import UsuarioRol
 from pjecz_delphinus_flask.config.extensions import database, pwd_context
 from pjecz_delphinus_flask.lib.pwgen import generar_contrasena
-from pjecz_delphinus_flask.lib.safe_string import safe_clave, safe_email, safe_string
+from pjecz_delphinus_flask.lib.safe_string import safe_clave, safe_email, safe_string, safe_int
 
 # Rutas a los archivos CSV
 AUTORIDADES_CSV = "seed/autoridades.csv"
@@ -40,10 +46,13 @@ PERMISOS_CSV = "seed/roles_permisos.csv"
 ROLES_CSV = "seed/roles_permisos.csv"
 USUARIOS_CSV = "seed/usuarios_roles.csv"
 USUARIOS_ROLES_CSV = "seed/usuarios_roles.csv"
+UDP_PERSONAS_CSV = "seed/PERSONAS.csv"
+UDP_PERSONAS_ATENCIONES_CSV = "seed/ATENCIONES.csv"
 UDP_SEXOS_CSV = "seed/udp_sexos.csv"
 UDP_TIPOS_CONDICIONES_CSV = "seed/udp_tipos_condiciones.csv"
 UDP_TIPOS_TRAMITES_CSV = "seed/udp_tipos_tramites.csv"
 UDP_TIPOS_VISITAS_CSV = "seed/udp_tipos_visitas.csv"
+UDP_ESTATUS_CSV = "seed/udp_estatus.csv"
 
 # Cargar variables de entorno
 load_dotenv()
@@ -462,6 +471,274 @@ def alimentar_udp_tipos_visitas():
     console.print(f"[green]{contador} udp_tipos_visitas alimentados.")
 
 
+def alimentar_estatus():
+    """Alimentar estados funcionales de atenciones."""
+    console = Console()
+    ruta = Path(UDP_ESTATUS_CSV)
+    if not ruta.exists():
+        console.print(f"[red]ERROR: {ruta.name} no se encontró.")
+        sys.exit(1)
+    if not ruta.is_file():
+        console.print(f"[red]ERROR: {ruta.name} no es un archivo.")
+        sys.exit(1)
+    console.print("Alimentando estatus...")
+    contador = 0
+    with open(ruta, encoding="utf8") as puntero:
+        rows = csv.DictReader(puntero)
+        for row in rows:
+            estatus_id = int(row["estatus_id"])
+            if estatus_id != contador + 1:
+                console.print(f"[red]ERROR: estatus_id {estatus_id} no es consecutivo")
+                sys.exit(1)
+            Estatus(nombre=safe_string(row["nombre"], to_uppercase=False)).save()
+            contador += 1
+    console.print(f"[green]{contador} estatus alimentados.")
+
+
+def obtener_o_crear_udp_sexo(nombre: str) -> UdpSexo:
+    """Obtener un UdpSexo por nombre, o crearlo si no existe"""
+    nombre = safe_string(nombre, save_enie=True)
+    udp_sexo = UdpSexo.query.filter_by(nombre=nombre).first()
+    if udp_sexo is None:
+        udp_sexo = UdpSexo(nombre=nombre).save()
+    return udp_sexo
+
+
+def obtener_o_crear_udp_tipo_condicion(nombre: str) -> UdpTipoCondicion:
+    """Obtener un UdpTipoCondicion por nombre, o crearlo si no existe"""
+    nombre = safe_string(nombre, save_enie=True)
+    udp_tipo_condicion = UdpTipoCondicion.query.filter_by(nombre=nombre).first()
+    if udp_tipo_condicion is None:
+        udp_tipo_condicion = UdpTipoCondicion(nombre=nombre).save()
+    return udp_tipo_condicion
+
+
+def partir_nombre_completo(nombre_completo: str) -> tuple[str, str, str]:
+    """Partir un nombre completo en (nombres, apellido_primero, apellido_segundo)
+
+    Se asume la convención mexicana: nombre(s) de pila seguidos del apellido
+    paterno y, opcionalmente, el apellido materno al final.
+    """
+    palabras = safe_string(nombre_completo, save_enie=True).split()
+    if len(palabras) == 0:
+        return "", "", ""
+    if len(palabras) == 1:
+        return palabras[0], "", ""
+    if len(palabras) == 2:
+        return palabras[0], palabras[1], ""
+    *nombres_palabras, apellido_primero, apellido_segundo = palabras
+    return " ".join(nombres_palabras), apellido_primero, apellido_segundo
+
+
+def convertir_fecha(fecha_str: str) -> date | None:
+    """Convertir una fecha con formato DD/MM/AAAA (con u sin hora) a un objeto date"""
+    fecha_str = fecha_str.strip()
+    if fecha_str == "":
+        return None
+    for formato in ("%d/%m/%Y %H:%M", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(fecha_str, formato).date()
+        except ValueError:
+            continue
+    return None
+
+
+def alimentar_udp_personas():
+    """Alimentar UDP Personas"""
+    console = Console()
+    ruta = Path(UDP_PERSONAS_CSV)
+    if not ruta.exists():
+        console.print(f"[red]ERROR: {ruta.name} no se encontró.")
+        sys.exit(1)
+    if not ruta.is_file():
+        console.print(f"[red]ERROR: {ruta.name} no es un archivo.")
+        sys.exit(1)
+    console.print("Alimentando udp_personas...")
+    contador = 0
+    autoridad_nd = Autoridad.query.filter_by(clave="ND").first()
+    with open(ruta, encoding="utf8") as puntero:
+        rows = csv.DictReader(puntero)
+        for row in rows:
+            udp_sexo = obtener_o_crear_udp_sexo(row["SEXO"])
+            udp_sexo_contraparte = obtener_o_crear_udp_sexo("ND")
+            udp_tipo_condicion = obtener_o_crear_udp_tipo_condicion(row["CONDICIÓN"])
+            udp_tipo_condicion_contraparte = obtener_o_crear_udp_tipo_condicion("NA")
+            nombres, apellido_primero, apellido_segundo = partir_nombre_completo(row["NOMBRE_USUARIO"])
+            udp_persona = obtener_o_crear_udp_persona(
+                nombre_completo=row["NOMBRE_USUARIO"],
+                udp_sexo=udp_sexo,
+                udp_tipo_condicion=udp_tipo_condicion,
+                nacimiento_fecha=convertir_fecha(row["FECH_NAC_USUARIO"]),
+            )
+            udp_persona_contraparte = obtener_o_crear_udp_persona(
+                nombre_completo=row["NOMBRE_CONTRAPARTE"],
+                udp_sexo=udp_sexo_contraparte,
+                udp_tipo_condicion=udp_tipo_condicion_contraparte,
+                nacimiento_fecha=convertir_fecha(row["FECH_NAC_CONTRAPARTE"]),
+            )
+            UdpIngreso(
+                udp_persona=udp_persona,
+                ocupacion=safe_string(row["OCUPACIÓN"]) if "OCUPACIÓN" in row else "ND",
+                ingresos=safe_int(row["INGRESOS"]) if "INGRESOS" in row else 0,
+                observaciones=(
+                    safe_string(row["OBSERVACIONES_INGRESO"], max_len=2048, save_enie=True, to_uppercase=False)
+                    if "OBSERVACIONES_INGRESO" in row
+                    else "ND"
+                ),
+            ).save()
+            UdpAtencion(
+                udp_persona=udp_persona,
+                contraparte_id=udp_persona_contraparte.id,
+                udp_tipo_tramite=obtener_o_crear_udp_tipo_tramite(row["TRAMITE"]),
+                expediente=safe_string(row["NO_EXPEDIENTE"]) if row["NO_EXPEDIENTE"] else "",
+                observaciones=safe_string(row["OBSERVACIONES"], max_len=2048, save_enie=True, to_uppercase=False),
+                fecha=convertir_fecha(row["FECHA"]),
+                usuario=obtener_o_crear_usuario_por_nombre(row["ATENDIO"], autoridad=autoridad_nd),
+                visita=convertir_fecha(row["VISITA"]) if row["VISITA"] else None,
+                como_se_entero=row["COMO_SE_ENTERO"] if "COMO_SE_ENTERO" in row else None,
+                atendio=row["ATENDIO"] if "ATENDIO" in row else None,
+                hora_salida=convertir_fecha(row["HORA_SALIDA"]) if "HORA_SALIDA" in row else None,
+                observaciones_aj=(
+                    safe_string(row["OBSERVACIONES_AJ"], max_len=2040, save_enie=True, to_uppercase=False)
+                    if "OBSERVACIONES_AJ" in row
+                    else None
+                ),
+                fecha_hora_aj=convertir_fecha(row["FECHA_HORA_AJ"]) if "FECHA_HORA_AJ" in row else None,
+                canalizado=row["CANALIZADO"] if "CANALIZADO" in row else None,
+                fecha_canalizado=convertir_fecha(row["FECHA_CANALIZADO"]) if "FECHA_CANALIZADO" in row else None,
+                estatus_id=3,
+            ).save()
+            municipio_id = 66
+            UdpDomicilio(
+                udp_persona=udp_persona,
+                municipio_id=municipio_id,
+                calle=safe_string(row["CALLE"]) if "CALLE" in row else "",
+                num_exterior=safe_string(row["NUMERO_EXTERIOR"]) if "NUMERO_EXTERIOR" in row else "",
+                num_interior=safe_string(row["NUMERO_INTERIOR"]) if "NUMERO_INTERIOR" in row else "",
+                colonia=safe_string(row["COLONIA"]) if "COLONIA" in row else "",
+                codigo_postal=safe_string(row["CODIGO_POSTAL"]) if "CODIGO_POSTAL" in row else 0,
+            ).save()
+            contador += 1
+        """ for row in rows:
+            console.print(f"row ={row}") """
+
+    console.print(f"[green]{contador} udp_personas alimentados.")
+
+
+def obtener_o_crear_udp_tipo_tramite(nombre: str) -> UdpTipoTramite:
+    """Obtener un UdpTipoTramite por nombre, o crearlo si no existe"""
+    nombre = safe_string(nombre, save_enie=True)
+    udp_tipo_tramite = UdpTipoTramite.query.filter_by(nombre=nombre).first()
+    if udp_tipo_tramite is None:
+        udp_tipo_tramite = UdpTipoTramite(nombre=nombre).save()
+    return udp_tipo_tramite
+
+
+def obtener_o_crear_udp_persona(
+    nombre_completo: str, udp_sexo: UdpSexo, udp_tipo_condicion: UdpTipoCondicion, nacimiento_fecha
+) -> UdpPersona:
+    """Obtener un UdpPersona por su nombre completo, o crearlo si no existe"""
+    nombres, apellido_primero, apellido_segundo = partir_nombre_completo(nombre_completo)
+    udp_persona = UdpPersona.query.filter_by(
+        nombres=nombres,
+        apellido_primero=apellido_primero,
+        apellido_segundo=apellido_segundo,
+    ).first()
+    if udp_persona is None:
+        udp_persona = UdpPersona(
+            udp_sexo=udp_sexo,
+            udp_tipo_condicion=udp_tipo_condicion,
+            nombres=nombres,
+            apellido_primero=apellido_primero,
+            apellido_segundo=apellido_segundo,
+            nacimiento_fecha=nacimiento_fecha,
+        ).save()
+    return udp_persona
+
+
+def obtener_o_crear_usuario_por_nombre(nombre_completo: str, autoridad: Autoridad) -> Usuario:
+    """Obtener un Usuario por su nombre completo, o crearlo con datos minimos si no existe"""
+    nombre_completo = safe_string(nombre_completo, save_enie=True)
+    usuario = Usuario.query.filter_by(nombres=nombre_completo).first()
+    if usuario is None:
+        usuario = Usuario(
+            autoridad=autoridad,
+            email=f"{safe_clave(nombre_completo, max_len=64, separator='-').lower()}@pjecz.gob.mx",
+            nombres=nombre_completo,
+            apellido_paterno="",
+            apellido_materno="",
+            curp="",
+            puesto="",
+            api_key="",
+            api_key_expiracion=datetime(year=2000, month=1, day=1),
+            contrasena=pwd_context.hash(generar_contrasena()),
+        ).save()
+    return usuario
+
+
+def obtener_municipio(nombre: str) -> Municipio:
+    """Obtener un Municipio por su nombre"""
+    return Municipio.query.filter_by(nombre=nombre).first()
+
+
+def alimentar_atenciones():
+    """Alimentar UDP Personas Atenciones"""
+    console = Console()
+    ruta = Path(UDP_PERSONAS_ATENCIONES_CSV)
+    if not ruta.exists():
+        console.print(f"[red]ERROR: {ruta.name} no se encontró.")
+        sys.exit(1)
+    if not ruta.is_file():
+        console.print(f"[red]ERROR: {ruta.name} no es un archivo.")
+        sys.exit(1)
+    autoridad_nd = Autoridad.query.filter_by(clave="ND").first()
+    if autoridad_nd is None:
+        console.print("[red]ERROR: No se encontró la autoridad 'ND'.")
+        sys.exit(1)
+    console.print("Alimentando atenciones ->...")
+    contador = 0
+    with open(ruta, encoding="cp1252") as puntero:
+        rows = csv.DictReader(puntero)
+        for row in rows:
+            udp_sexo = obtener_o_crear_udp_sexo(row["SEXO"])
+            udp_tipo_condicion = obtener_o_crear_udp_tipo_condicion(row["CONDICIÓN"])
+            udp_persona = obtener_o_crear_udp_persona(
+                row["NOMBRE_USUARIO"],
+                udp_sexo,
+                udp_tipo_condicion,
+                convertir_fecha(row["FECH_NAC_USUARIO"]),
+            )
+            udp_tipo_tramite = obtener_o_crear_udp_tipo_tramite(row["TRAMITE"])
+            usuario = obtener_o_crear_usuario_por_nombre(row["ATENDIO"], autoridad_nd)
+            no_expediente = row["NO_EXPEDIENTE"].strip()
+            anio_expediente = row["AÑO_EXPEDIENTE"].strip()
+            expediente = f"{no_expediente}/{anio_expediente}" if no_expediente and anio_expediente else ""
+            observaciones = safe_string(row["OBSERVACIONES"], max_len=2048, save_enie=True, to_uppercase=False)
+            UdpAtencion(
+                autoridad=autoridad_nd,
+                udp_persona=udp_persona,
+                udp_tipo_tramite=udp_tipo_tramite,
+                usuario=usuario,
+                expediente=expediente,
+                observaciones=observaciones,
+                fecha=convertir_fecha(row["FECHA"]),
+                visita=convertir_fecha(row["VISITA"]) if row["VISITA"] else None,
+                como_se_entero=row["COMO_SE_ENTERO"] if "COMO_SE_ENTERO" in row else None,
+                atendio=row["ATENDIO"] if "ATENDIO" in row else None,
+                hora_salida=convertir_fecha(row["HORA_SALIDA"]) if "HORA_SALIDA" in row else None,
+                observaciones_aj=(
+                    safe_string(row["OBSERVACIONES_AJ"], max_len=2048, save_enie=True, to_uppercase=False)
+                    if "OBSERVACIONES_AJ" in row
+                    else None
+                ),
+                fecha_hora_aj=convertir_fecha(row["FECHA_HORA_AJ"]) if "FECHA_HORA_AJ" in row else None,
+                canalizado=row["CANALIZADO"] if "CANALIZADO" in row else None,
+                fecha_canalizado=convertir_fecha(row["FECHA_CANALIZADO"]) if "FECHA_CANALIZADO" in row else None,
+            ).save()
+            contador += 1
+    console.print(f"[green]{contador} atenciones alimentadas.")
+
+
 def alimentar_estados():
     """Alimentar Estados"""
     console = Console()
@@ -832,7 +1109,10 @@ def inicializar():
     if DEPLOYMENT_ENVIRONMENT != "DEVELOPMENT":
         console.print(f"[red]PROHIBIDO: No se inicializa porque DEPLOYMENT_ENVIRONMENT es {DEPLOYMENT_ENVIRONMENT}.")
         sys.exit(1)
-    database.drop_all()
+    # DROP CASCADE del esquema completo para eliminar tablas huérfanas que impiden borrar por dependencias
+    database.session.execute(text("DROP SCHEMA public CASCADE"))
+    database.session.execute(text("CREATE SCHEMA public"))
+    database.session.commit()
     database.create_all()
     console.print("[green]La base de datos se ha inicializado correctamente.")
 
@@ -857,7 +1137,24 @@ def alimentar():
     alimentar_udp_tipos_condiciones()
     alimentar_udp_tipos_tramites()
     alimentar_udp_tipos_visitas()
+    alimentar_estatus()
+    alimentar_udp_personas()
+    # alimentar_atenciones()
     console.print("[green]La base de datos se ha alimentado correctamente.")
+
+
+def eliminar_personas():
+    """Eliminar todas las personas de la base de datos"""
+    for persona in UdpPersona.query.all():
+        database.session.delete(persona)
+    database.session.commit()
+
+
+@db.command()
+def alimentar_personas():
+    """Alimentar la base de datos con los datos de personas en el archivo CSV correspondiente"""
+    # eliminar_personas()
+    alimentar_udp_personas()
 
 
 @db.command()

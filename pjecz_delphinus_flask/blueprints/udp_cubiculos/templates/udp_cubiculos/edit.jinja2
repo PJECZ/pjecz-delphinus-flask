@@ -1,0 +1,20 @@
+{% extends 'layouts/app.jinja2' %}
+{% import 'macros/form.jinja2' as f with context %}
+{% import 'macros/topbar.jinja2' as topbar %}
+
+{% block title %}Editar cubículo {{ cubiculo.nombre }}{% endblock %}
+
+{% block topbar_actions %}
+    {{ topbar.page('Editar cubículo ' + cubiculo.nombre) }}
+{% endblock %}
+
+{% block content %}
+    {% call f.card() %}
+        {% set form_kwargs = {'cubiculo_id': cubiculo.id} %}
+        {% call f.form_tag('udp_cubiculos.edit', fid='udp_cubiculo_form', **form_kwargs) %}
+            {% call f.form_group(form.nombre) %}{% endcall %}
+            <p class="form-text">El estado actual, {{ cubiculo.estado }}, se administra mediante las reglas de atención.</p>
+            {% call f.form_group(form.guardar) %}{% endcall %}
+        {% endcall %}
+    {% endcall %}
+{% endblock %}

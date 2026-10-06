@@ -1,0 +1,339 @@
+<section class="atencion-module" data-person-search-url="{{ url_for('udp_personas.select_json') }}"
+    data-person-create-url="{{ url_for('udp_personas.crear_json') if current_user.can_insert('UDP PERSONAS') else '' }}"
+    data-attentions-url="{{ url_for('udp_atenciones.relacionadas_json') }}"
+    data-new-attention-url="{{ url_for('udp_atenciones.new_fragment') if current_user.can_insert('UDP ATENCIONES') else '' }}"
+    data-sex-url="{{ url_for('udp_sexos.select_json') }}"
+    data-condition-url="{{ url_for('udp_tipos_condiciones.select_json') }}" aria-labelledby="atencion-module-title">
+    <header class="atencion-module__header">
+        <div>
+            <p class="atencion-module__eyebrow mb-2">GESTIÓN DE CASOS</p>
+            <h1 id="atencion-module-title" class="h3 mb-1">Nueva atención</h1>
+            <p class="text-body-secondary mb-0">Selecciona a las personas relacionadas con la atención.</p>
+        </div>
+        <div class="atencion-module__header-actions">
+            <button class="btn btn-sm btn-outline-primary atencion-module__help" type="button"
+                data-tour-help="index" aria-label="Iniciar tutorial de esta página" title="Ayuda">
+                <span class="mdi mdi-help-circle-outline me-1" aria-hidden="true"></span>Ayuda
+            </button>
+            <span class="atencion-module__header-icon mdi mdi-clipboard-account-outline" aria-hidden="true"></span>
+        </div>
+    </header>
+
+    <div class="atencion-module__body">
+        <div class="row g-3" data-search-fields>
+            <div class="col-12 col-xl-6">
+                <section class="atencion-person-panel atencion-person-panel--actor" data-person-role="actor"
+                    aria-labelledby="actor-title">
+                    <div class="atencion-person-panel__heading">
+                        <span class="mdi mdi-account-outline" aria-hidden="true"></span>
+                        <div>
+                            <h2 id="actor-title" class="h5 mb-0">Actor</h2>
+                            <p class="small text-body-secondary mb-0">Persona principal de la atención</p>
+                        </div>
+                    </div>
+
+                    <div class="row g-3" data-search-fields>
+                        <div class="col-12">
+                            <label class="form-label" for="actor-nombres">Nombre</label>
+                            <input class="form-control" id="actor-nombres" name="nombres" type="search" maxlength="256"
+                                autocomplete="off" data-search-field="nombres">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="actor-apellido-primero">Primer apellido</label>
+                            <input class="form-control" id="actor-apellido-primero" name="apellido_primero"
+                                type="search" maxlength="256" autocomplete="off" data-search-field="apellido_primero">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="actor-apellido-segundo">Segundo apellido</label>
+                            <input class="form-control" id="actor-apellido-segundo" name="apellido_segundo"
+                                type="search" maxlength="256" autocomplete="off" data-search-field="apellido_segundo">
+                        </div>
+                    </div>
+
+                    <div class="atencion-person-panel__actions">
+                        <button class="btn btn-primary" type="button" data-action="search">
+                            <span class="mdi mdi-magnify me-1" aria-hidden="true"></span>Buscar actor
+                        </button>
+                        {% if current_user.can_insert('UDP PERSONAS') %}
+                        <button class="btn btn-outline-secondary" type="button" data-action="register">
+                            <span class="mdi mdi-account-plus-outline me-1" aria-hidden="true"></span>Registrar nueva
+                            persona
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    {% if current_user.can_insert('UDP PERSONAS') %}
+                    <form class="atencion-person-panel__registration d-none" data-person-registration
+                        aria-labelledby="actor-registration-title" novalidate>
+                        <div class="atencion-person-panel__registration-heading">
+                            <span class="mdi mdi-account-plus-outline" aria-hidden="true"></span>
+                            <div>
+                                <p class="atencion-person-panel__registration-eyebrow mb-1">NUEVO REGISTRO</p>
+                                <h3 class="h5 mb-1" id="actor-registration-title">Registrar nueva persona</h3>
+                                <p class="small text-body-secondary mb-0">
+                                    Completa los datos de la persona. Podrás revisarlos antes de guardar.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label" for="actor-reg-nombres">Nombre(s)</label>
+                                <input class="form-control" id="actor-reg-nombres" name="nombres" maxlength="256"
+                                    required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="actor-reg-apellido-primero">Primer apellido</label>
+                                <input class="form-control" id="actor-reg-apellido-primero" name="apellido_primero"
+                                    maxlength="256" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="actor-reg-apellido-segundo">Segundo apellido</label>
+                                <input class="form-control" id="actor-reg-apellido-segundo" name="apellido_segundo"
+                                    maxlength="256">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="actor-reg-nacimiento">Fecha de nacimiento</label>
+                                <input class="form-control" id="actor-reg-nacimiento" name="nacimiento_fecha"
+                                    type="date">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="actor-reg-sexo">Sexo</label>
+                                <select class="form-select" id="actor-reg-sexo" name="udp_sexo" required>
+                                    <option value="">Seleccionar</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="actor-reg-condicion">Tipo de condición</label>
+                                <select class="form-select" id="actor-reg-condicion" name="udp_tipo_condicion" required>
+                                    <option value="">Seleccionar</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="actor-reg-curp">CURP</label>
+                                <input class="form-control" id="actor-reg-curp" name="curp" maxlength="18">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="actor-reg-observaciones">Observaciones</label>
+                                <textarea class="form-control" id="actor-reg-observaciones" name="observaciones"
+                                    maxlength="1024" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button class="btn btn-success" type="submit">Guardar y seleccionar</button>
+                            <button class="btn btn-outline-secondary" type="button"
+                                data-action="cancel-register">Cancelar</button>
+                        </div>
+                        <p class="small mt-2 mb-0" role="status" aria-live="polite" data-registration-feedback></p>
+                    </form>
+                    {% endif %}
+
+                    <div class="atencion-person-panel__selected" role="status" aria-live="polite" data-selected-empty>
+                        <span class="mdi mdi-account-question-outline" aria-hidden="true"></span>
+                        <span>Actor no seleccionado</span>
+                    </div>
+                    <div class="atencion-person-panel__selected atencion-person-panel__selected--active"
+                        data-selected-person role="status" aria-live="polite" hidden>
+                        <span class="mdi mdi-account-check-outline" aria-hidden="true"></span>
+                        <div class="min-w-0">
+                            <span class="d-block small">Actor seleccionado</span>
+                            <strong class="d-block text-break" data-person-name></strong>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-action="clear"
+                            aria-label="Quitar actor seleccionado">
+                            <span class="mdi mdi-close" aria-hidden="true"></span>
+                        </button>
+                    </div>
+
+                    <div class="atencion-person-panel__results" aria-live="polite" data-search-results>
+                        <p class="small text-body-secondary mb-0">Los resultados de búsqueda aparecerán aquí.</p>
+                        <ul class="list-group list-group-flush" role="list" aria-label="Resultados de actores" hidden>
+                        </ul>
+                    </div>
+                </section>
+            </div>
+
+            <div class="col-12 col-xl-6">
+                <section class="atencion-person-panel atencion-person-panel--contraparte" data-person-role="contraparte"
+                    aria-labelledby="contraparte-title">
+                    <div class="atencion-person-panel__heading">
+                        <span class="mdi mdi-account-multiple-outline" aria-hidden="true"></span>
+                        <div>
+                            <h2 id="contraparte-title" class="h5 mb-0">Contraparte</h2>
+                            <p class="small text-body-secondary mb-0">Persona relacionada con el actor</p>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label" for="contraparte-nombres">Nombre</label>
+                            <input class="form-control" id="contraparte-nombres" name="nombres" type="search"
+                                maxlength="256" autocomplete="off" data-search-field="nombres">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="contraparte-apellido-primero">Primer apellido</label>
+                            <input class="form-control" id="contraparte-apellido-primero" name="apellido_primero"
+                                type="search" maxlength="256" autocomplete="off" data-search-field="apellido_primero">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="contraparte-apellido-segundo">Segundo apellido</label>
+                            <input class="form-control" id="contraparte-apellido-segundo" name="apellido_segundo"
+                                type="search" maxlength="256" autocomplete="off" data-search-field="apellido_segundo">
+                        </div>
+                    </div>
+
+                    <div class="atencion-person-panel__actions">
+                        <button class="btn btn-primary" type="button" data-action="search">
+                            <span class="mdi mdi-magnify me-1" aria-hidden="true"></span>Buscar contraparte
+                        </button>
+                        {% if current_user.can_insert('UDP PERSONAS') %}
+                        <button class="btn btn-outline-secondary" type="button" data-action="register">
+                            <span class="mdi mdi-account-plus-outline me-1" aria-hidden="true"></span>Registrar nueva
+                            persona
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    {% if current_user.can_insert('UDP PERSONAS') %}
+                    <form class="atencion-person-panel__registration d-none" data-person-registration
+                        aria-labelledby="contraparte-registration-title" novalidate>
+                        <div class="atencion-person-panel__registration-heading">
+                            <span class="mdi mdi-account-plus-outline" aria-hidden="true"></span>
+                            <div>
+                                <p class="atencion-person-panel__registration-eyebrow mb-1">NUEVO REGISTRO</p>
+                                <h3 class="h5 mb-1" id="contraparte-registration-title">Registrar nueva persona</h3>
+                                <p class="small text-body-secondary mb-0">
+                                    Completa los datos de la persona. Podrás revisarlos antes de guardar.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label" for="contraparte-reg-nombres">Nombre(s)</label>
+                                <input class="form-control" id="contraparte-reg-nombres" name="nombres" maxlength="256"
+                                    required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="contraparte-reg-apellido-primero">Primer apellido</label>
+                                <input class="form-control" id="contraparte-reg-apellido-primero"
+                                    name="apellido_primero" maxlength="256" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="contraparte-reg-apellido-segundo">Segundo
+                                    apellido</label>
+                                <input class="form-control" id="contraparte-reg-apellido-segundo"
+                                    name="apellido_segundo" maxlength="256">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="contraparte-reg-nacimiento">Fecha de nacimiento</label>
+                                <input class="form-control" id="contraparte-reg-nacimiento" name="nacimiento_fecha"
+                                    type="date">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="contraparte-reg-sexo">Sexo</label>
+                                <select class="form-select" id="contraparte-reg-sexo" name="udp_sexo" required>
+                                    <option value="">Seleccionar</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="contraparte-reg-condicion">Tipo de condición</label>
+                                <select class="form-select" id="contraparte-reg-condicion" name="udp_tipo_condicion"
+                                    required>
+                                    <option value="">Seleccionar</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="contraparte-reg-curp">CURP</label>
+                                <input class="form-control" id="contraparte-reg-curp" name="curp" maxlength="18">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label" for="contraparte-reg-observaciones">Observaciones</label>
+                                <textarea class="form-control" id="contraparte-reg-observaciones" name="observaciones"
+                                    maxlength="1024" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button class="btn btn-success" type="submit">Guardar y seleccionar</button>
+                            <button class="btn btn-outline-secondary" type="button"
+                                data-action="cancel-register">Cancelar</button>
+                        </div>
+                        <p class="small mt-2 mb-0" role="status" aria-live="polite" data-registration-feedback></p>
+                    </form>
+                    {% endif %}
+
+                    <div class="atencion-person-panel__selected" role="status" aria-live="polite" data-selected-empty>
+                        <span class="mdi mdi-account-question-outline" aria-hidden="true"></span>
+                        <span>Contraparte no seleccionada</span>
+                    </div>
+                    <div class="atencion-person-panel__selected atencion-person-panel__selected--active"
+                        data-selected-person hidden>
+                        <span class="mdi mdi-account-check-outline" aria-hidden="true"></span>
+                        <div class="min-w-0">
+                            <span class="d-block small">Contraparte seleccionada</span>
+                            <strong class="d-block text-break" data-person-name></strong>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-action="clear"
+                            aria-label="Quitar contraparte seleccionada">
+                            <span class="mdi mdi-close" aria-hidden="true"></span>
+                        </button>
+                    </div>
+
+                    <div class="atencion-person-panel__results" aria-live="polite" data-search-results>
+                        <p class="small text-body-secondary mb-0">Los resultados de búsqueda aparecerán aquí.</p>
+                        <ul class="list-group list-group-flush" role="list" aria-label="Resultados de contrapartes"
+                            hidden></ul>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <section class="atencion-related" aria-labelledby="atenciones-relacionadas-title">
+            <div class="atencion-related__heading">
+                <div>
+                    <p class="atencion-module__eyebrow mb-1">CONSULTA</p>
+                    <h2 id="atenciones-relacionadas-title" class="h5 mb-0" aria-live="polite">Atenciones relacionadas</h2>
+                </div>
+                <span class="mdi mdi-link-variant" aria-hidden="true"></span>
+            </div>
+            <div class="alert alert-success mb-3" role="status" aria-live="polite" data-attention-save-status hidden>
+            </div>
+
+            <div class="atencion-related__state" role="status" aria-live="polite" data-attention-state="initial">
+                <span class="mdi mdi-account-search-outline" aria-hidden="true"></span>
+                <p class="mb-0">Selecciona un actor o contraparte para comenzar.</p>
+            </div>
+            <div class="atencion-related__state" role="status" aria-live="polite" data-attention-state="loading" hidden>
+                <span class="mdi mdi-loading mdi-spin" aria-hidden="true"></span>
+                <p class="mb-0">Buscando atenciones...</p>
+            </div>
+            <div class="atencion-related__state" role="status" aria-live="polite" data-attention-state="empty-person"
+                hidden>
+                <span class="mdi mdi-text-box-search-outline" aria-hidden="true"></span>
+                <p class="mb-0">No se encontraron atenciones para esta persona.</p>
+            </div>
+            <div class="atencion-related__state atencion-related__state--empty-pair" role="status" aria-live="polite"
+                data-attention-state="empty-pair" hidden>
+                <div>
+                    <strong class="d-block">No existe una atención registrada entre estas personas.</strong>
+                    <span class="small">Puedes iniciar una nueva atención con ambas personas.</span>
+                </div>
+                {% if current_user.can_insert('UDP ATENCIONES') %}
+                <button class="btn btn-primary" type="button" data-action="new-attention">
+                    <span class="mdi mdi-plus me-1" aria-hidden="true"></span>Crear nueva atención
+                </button>
+                {% endif %}
+            </div>
+            <ul class="list-group atencion-related__list" aria-label="Atenciones encontradas" data-attention-results
+                hidden></ul>
+            <section class="atencion-new-form mt-3" data-new-attention-form hidden
+                aria-labelledby="atencion-new-form-title">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                    <h3 id="atencion-new-form-title" class="h5 mb-0">Datos de la nueva atención</h3>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" data-action="close-new-attention">
+                        <span class="mdi mdi-close me-1" aria-hidden="true"></span>Cerrar formulario
+                    </button>
+                </div>
+                <div data-new-attention-content></div>
+            </section>
+        </section>
+    </div>
+</section>

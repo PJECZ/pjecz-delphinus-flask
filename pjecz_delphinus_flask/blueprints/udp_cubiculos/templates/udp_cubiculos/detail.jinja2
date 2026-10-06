@@ -1,0 +1,45 @@
+{% extends 'layouts/app.jinja2' %}
+{% import 'macros/detail.jinja2' as detail %}
+{% import 'macros/modals.jinja2' as modals %}
+{% import 'macros/topbar.jinja2' as topbar %}
+
+{% block title %}Cubículo {{ cubiculo.nombre }}{% endblock %}
+
+{% block topbar_actions %}
+    {% call topbar.page_buttons('Cubículo ' + cubiculo.nombre) %}
+        {{ topbar.button_previous('Cubículos', url_for('udp_cubiculos.list_active')) }}
+        {% if current_user.can_edit('UDP CUBICULOS') and cubiculo.estatus == 'A' %}
+            {{ topbar.button_edit('Editar', url_for('udp_cubiculos.edit', cubiculo_id=cubiculo.id)) }}
+        {% endif %}
+        {% if current_user.can_admin('UDP CUBICULOS') %}
+            {% if cubiculo.estatus == 'A' %}{{ topbar.button_delete('Dar de baja', url_for('udp_cubiculos.delete', cubiculo_id=cubiculo.id)) }}{% endif %}
+            {% if cubiculo.estatus == 'B' %}{{ topbar.button_recover('Recuperar', url_for('udp_cubiculos.recover', cubiculo_id=cubiculo.id)) }}{% endif %}
+        {% endif %}
+    {% endcall %}
+{% endblock %}
+
+{% block content %}
+    {% call detail.card(estatus=cubiculo.estatus) %}
+        <div class="row">
+            {{ detail.label_value_big('ID', cubiculo.id) }}
+            {{ detail.label_value('Cubículo', cubiculo.nombre) }}
+            <div class="row">
+                <div class="col-md-3 text-end">Estatus</div>
+                <div class="col-md-9">
+                    {% if cubiculo.estado == 'disponible' %}
+                        <span class="badge text-bg-success">Disponible</span>
+                    {% else %}
+                        <span class="badge text-bg-warning">Ocupado</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% endcall %}
+{% endblock %}
+
+{% block custom_javascript %}
+    {% if current_user.can_admin('UDP CUBICULOS') %}
+        {% if cubiculo.estatus == 'A' %}{{ modals.custom_javascript_delete('Dar de baja', '¿Dar de baja el cubículo ' + cubiculo.nombre + '?') }}{% endif %}
+        {% if cubiculo.estatus == 'B' %}{{ modals.custom_javascript_recover('Recuperar', '¿Recuperar el cubículo ' + cubiculo.nombre + '?') }}{% endif %}
+    {% endif %}
+{% endblock %}

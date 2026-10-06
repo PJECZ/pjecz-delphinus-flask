@@ -4,7 +4,7 @@ UDP Personas, vistas
 
 import json
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_
 
@@ -14,11 +14,14 @@ from pjecz_delphinus_flask.blueprints.permisos.models import Permiso
 from pjecz_delphinus_flask.blueprints.udp_contrapartes.models import UdpContraparte
 from pjecz_delphinus_flask.blueprints.udp_personas.forms import UdpPersonaForm
 from pjecz_delphinus_flask.blueprints.udp_personas.models import UdpPersona
+from pjecz_delphinus_flask.blueprints.udp_sexos.models import UdpSexo
+from pjecz_delphinus_flask.blueprints.udp_tipos_condiciones.models import UdpTipoCondicion
 from pjecz_delphinus_flask.blueprints.usuarios.decorators import permission_required
 from pjecz_delphinus_flask.lib.datatables import get_datatable_parameters, output_datatable_json
 from pjecz_delphinus_flask.lib.safe_string import safe_message, safe_string
 
 MODULO = "UDP PERSONAS"
+SEARCH_PAGE_SIZE = 25
 
 udp_personas = Blueprint("udp_personas", __name__, template_folder="templates")
 
@@ -122,59 +125,90 @@ def detail(udp_persona_id):
     return render_template("udp_personas/detail.jinja2", udp_persona=udp_persona, posibles_contrapartes=posibles_contrapartes)
 
 
+def _crear_persona_desde_form(form: UdpPersonaForm) -> tuple[UdpPersona, list[str], Bitacora]:
+    """Crear persona y bitácora aplicando la misma normalización y avisos del alta estándar."""
+    nombres = safe_string(form.nombres.data, save_enie=True)
+    apellido_primero = safe_string(form.apellido_primero.data, save_enie=True)
+    apellido_segundo = safe_string(form.apellido_segundo.data, save_enie=True)
+    curp = safe_string(form.curp.data)
+    nacimiento_fecha = form.nacimiento_fecha.data
+    avisos = []
+    if nacimiento_fecha:
+        posible_duplicado = UdpPersona.query.filter(
+            UdpPersona.nombres == nombres,
+            UdpPersona.apellido_primero == apellido_primero,
+            UdpPersona.estatus == "A",
+        ).first()
+        if posible_duplicado:
+            avisos.append(f"Posible duplicado: {posible_duplicado.nombre_completo}. Verifique.")
+    posible_duplicado_nombre = UdpPersona.query.filter(
+        UdpPersona.nombres == nombres,
+        UdpPersona.apellido_primero == apellido_primero,
+        UdpPersona.estatus == "A",
+    ).first()
+    if posible_duplicado_nombre:
+        avisos.append(f"Ya existe una persona con el mismo nombre: {posible_duplicado_nombre.nombre_completo}. Verifique.")
+
+    udp_persona = UdpPersona(
+        udp_sexo_id=form.udp_sexo.data,
+        udp_tipo_condicion_id=form.udp_tipo_condicion.data,
+        nombres=nombres,
+        apellido_primero=apellido_primero,
+        apellido_segundo=apellido_segundo,
+        curp=curp,
+        nacimiento_fecha=nacimiento_fecha,
+        observaciones=safe_string(form.observaciones.data, save_enie=True, max_len=1024),
+    )
+    udp_persona.save()
+    bitacora = Bitacora(
+        modulo=Modulo.query.filter_by(nombre=MODULO).first(),
+        usuario=current_user,
+        descripcion=safe_message(f"Nuevo UDP Persona {udp_persona.nombre_completo}"),
+        url=url_for("udp_personas.detail", udp_persona_id=udp_persona.id),
+    )
+    bitacora.save()
+    return udp_persona, avisos, bitacora
+
+
 @udp_personas.route("/udp_personas/nuevo", methods=["GET", "POST"])
 @permission_required(MODULO, Permiso.CREAR)
 def new():
     """Nueva Persona"""
     form = UdpPersonaForm()
     if form.validate_on_submit():
-        es_valido = True
-        nombres = safe_string(form.nombres.data, save_enie=True)
-        apellido_primero = safe_string(form.apellido_primero.data, save_enie=True)
-        apellido_segundo = safe_string(form.apellido_segundo.data, save_enie=True)
-        curp = safe_string(form.curp.data)
-        nacimiento_fecha = form.nacimiento_fecha.data
-        # Verificar posible duplicado por nacimiento_fecha
-        if nacimiento_fecha:
-            posible_duplicado = UdpPersona.query.filter(
-                UdpPersona.nombres == nombres,
-                UdpPersona.apellido_primero == apellido_primero,
-                UdpPersona.estatus == "A",
-            ).first()
-            if posible_duplicado:
-                flash(f"Posible duplicado: {posible_duplicado.nombre_completo}. Verifique.", "warning")
-        # Verificar posible duplicado por nombres y apellido_primero
-        posible_duplicado_nombre = UdpPersona.query.filter(
-            UdpPersona.nombres == nombres,
-            UdpPersona.apellido_primero == apellido_primero,
-            UdpPersona.estatus == "A",
-        ).first()
-        if posible_duplicado_nombre:
-            flash(
-                f"Ya existe una persona con el mismo nombre: {posible_duplicado_nombre.nombre_completo}. Verifique.", "warning"
-            )
-        if es_valido:
-            udp_persona = UdpPersona(
-                udp_sexo_id=form.udp_sexo.data,
-                udp_tipo_condicion_id=form.udp_tipo_condicion.data,
-                nombres=nombres,
-                apellido_primero=apellido_primero,
-                apellido_segundo=apellido_segundo,
-                curp=curp,
-                nacimiento_fecha=nacimiento_fecha,
-                observaciones=safe_string(form.observaciones.data, save_enie=True, max_len=1024),
-            )
-            udp_persona.save()
-            bitacora = Bitacora(
-                modulo=Modulo.query.filter_by(nombre=MODULO).first(),
-                usuario=current_user,
-                descripcion=safe_message(f"Nuevo UDP Persona {udp_persona.nombre_completo}"),
-                url=url_for("udp_personas.detail", udp_persona_id=udp_persona.id),
-            )
-            bitacora.save()
-            flash(bitacora.descripcion, "success")
-            return redirect(bitacora.url)
+        _, avisos, bitacora = _crear_persona_desde_form(form)
+        for aviso in avisos:
+            flash(aviso, "warning")
+        flash(bitacora.descripcion, "success")
+        return redirect(bitacora.url)
     return render_template("udp_personas/new.jinja2", form=form)
+
+
+@udp_personas.route("/udp_personas/crear_json", methods=["POST"])
+@permission_required(MODULO, Permiso.CREAR)
+def crear_json():
+    """Crear una persona para un flujo inline con la validación del formulario estándar."""
+    form = UdpPersonaForm()
+    if not form.validate_on_submit():
+        return jsonify(error="Revise los datos de la persona.", errors=form.errors), 400
+    try:
+        sexo_id = int(form.udp_sexo.data)
+        condicion_id = int(form.udp_tipo_condicion.data)
+    except TypeError, ValueError:
+        return jsonify(error="Seleccione un sexo y un tipo de condición válidos."), 400
+    sexo = UdpSexo.query.filter_by(id=sexo_id, estatus="A").first()
+    condicion = UdpTipoCondicion.query.filter_by(id=condicion_id, estatus="A").first()
+    if sexo is None or condicion is None:
+        return jsonify(error="El sexo o tipo de condición seleccionado no está disponible."), 400
+
+    udp_persona, avisos, _ = _crear_persona_desde_form(form)
+    return (
+        jsonify(
+            persona={"id": udp_persona.id, "nombre_completo": udp_persona.nombre_completo},
+            avisos=avisos,
+        ),
+        201,
+    )
 
 
 @udp_personas.route("/udp_personas/edicion/<int:udp_persona_id>", methods=["GET", "POST"])
@@ -254,3 +288,66 @@ def recover(udp_persona_id):
         bitacora.save()
         flash(bitacora.descripcion, "success")
     return redirect(url_for("udp_personas.detail", udp_persona_id=udp_persona.id))
+
+
+@udp_personas.route("/udp_personas/select_json", methods=["GET", "POST"])
+def select_json():
+    """Proporcionar personas activas para elegir como contraparte."""
+    consulta = UdpPersona.query.filter_by(estatus="A")
+
+    search_fields = (
+        ("nombres", UdpPersona.nombres),
+        ("apellido_primero", UdpPersona.apellido_primero),
+        ("apellido_segundo", UdpPersona.apellido_segundo),
+        ("curp", UdpPersona.curp),
+    )
+    search_terms = {}
+    if any(field_name in request.args for field_name, _ in search_fields):
+        search_terms = {
+            field_name: safe_string(request.args.get(field_name, ""), save_enie=True) for field_name, _ in search_fields
+        }
+        search_terms = {field_name: term for field_name, term in search_terms.items() if term}
+        if not search_terms:
+            return {"results": [], "pagination": {"more": False}}
+        for field_name, column in search_fields:
+            if field_name in search_terms:
+                consulta = consulta.filter(column.contains(search_terms[field_name]))
+    elif "searchTerm" in request.args:
+        search_term = safe_string(request.args.get("searchTerm", ""), save_enie=True)
+        if len(search_term) >= 4:
+            search_terms = {field_name: search_term for field_name, _ in search_fields}
+            consulta = consulta.filter(
+                UdpPersona.curp.contains(search_term)
+                | UdpPersona.nombres.contains(search_term)
+                | UdpPersona.apellido_primero.contains(search_term)
+                | UdpPersona.apellido_segundo.contains(search_term)
+            )
+        else:
+            return {"results": [], "pagination": {"more": False}}
+    else:
+        return {"results": [], "pagination": {"more": False}}
+    consulta = consulta.order_by(UdpPersona.apellido_primero, UdpPersona.apellido_segundo, UdpPersona.nombres)
+    page_value = request.args.get("page")
+    if page_value is not None:
+        try:
+            page = max(1, int(page_value))
+        except ValueError:
+            return jsonify(error="La página solicitada no es válida."), 400
+        consulta = consulta.offset((page - 1) * SEARCH_PAGE_SIZE).limit(SEARCH_PAGE_SIZE + 1)
+    registros = consulta.all()
+    has_more = page_value is not None and len(registros) > SEARCH_PAGE_SIZE
+    if has_more:
+        registros = registros[:SEARCH_PAGE_SIZE]
+    resultados = [
+        {
+            "id": persona.id,
+            "text": f"{persona.nombre_completo} - {persona.curp or 'Sin CURP'}",
+            "nombres": persona.nombres,
+            "apellido_primero": persona.apellido_primero,
+            "apellido_segundo": persona.apellido_segundo,
+            "curp": persona.curp,
+            "search_terms": search_terms,
+        }
+        for persona in registros
+    ]
+    return {"results": resultados, "pagination": {"more": has_more}}
